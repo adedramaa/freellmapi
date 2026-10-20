@@ -4,10 +4,23 @@ import {
   COMPOSER_GAP_PX,
   COMPOSER_MAX_HEIGHT_PX,
   composerHasContent,
+  compactComposerPlaceholder,
   composerHeight,
   sendButtonInteractive,
   sendButtonOffset,
 } from './composer-geometry'
+
+describe('compactComposerPlaceholder', () => {
+  it('removes long keyboard hints from the mobile placeholder', () => {
+    expect(compactComposerPlaceholder('Escribe un mensaje… (⏎ para enviar, ⇧⏎ para nueva línea)')).toBe('Escribe un mensaje…')
+    expect(compactComposerPlaceholder('Type a message… (⏎ to send, ⇧⏎ for newline)')).toBe('Type a message…')
+  })
+
+  it('keeps compact and non-parenthetical translations intact', () => {
+    expect(compactComposerPlaceholder('Escribe un mensaje…')).toBe('Escribe un mensaje…')
+    expect(compactComposerPlaceholder('(hint only)')).toBe('(hint only)')
+  })
+})
 
 describe('composerHasContent', () => {
   it('needs real text or an attachment', () => {
