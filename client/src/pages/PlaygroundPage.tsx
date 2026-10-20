@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, CircleAlert, FileText, Globe, X } from 'lucide-react'
+import { ChevronRight, CircleAlert, FileText, Globe, PanelLeft, Settings2, SquarePen, X } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { buildModelOptions } from '@/lib/model-groups'
 import type { Chain } from '@/components/chain-manager'
@@ -223,11 +223,9 @@ const SCROLL_FOLLOW_SLACK = 40
 /** localStorage key holding whether the right-hand settings rail is expanded. */
 const SETTINGS_OPEN_KEY = 'playground.settingsOpen'
 
-// Both rails plus the chat need room the small breakpoints do not have: three
-// columns on a phone leave the transcript a sliver. So below lg a visit starts
-// with the rails collapsed to their strips whatever a desktop session
-// remembered — the toggles still work, the remembered choice just isn't
-// restored until there is width for it.
+// Below lg, rails become overlays, leaving the chat the entire viewport width.
+// A phone visit therefore starts with both closed, regardless of the desktop
+// state remembered in localStorage.
 function initialRailOpen(key: string): boolean {
   if (typeof window === 'undefined') return true
   if (!window.matchMedia('(min-width: 1024px)').matches) return false
@@ -583,6 +581,7 @@ export default function PlaygroundPage() {
   }
 
   const handleSelectConversation = (id: number) => {
+    if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(false)
     if (id === conversationIdRef.current) return
     flushCurrentConversation()
     openConversation(id).catch(err => {
@@ -595,6 +594,7 @@ export default function PlaygroundPage() {
   // "New conversation" and "Clear" are the same move now: bank the current
   // transcript, then start with a blank one. The old chat stays in the sidebar.
   const handleNewConversation = () => {
+    if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(false)
     flushCurrentConversation()
     resetConversationState()
     inputRef.current?.focus()
@@ -629,6 +629,7 @@ export default function PlaygroundPage() {
   }
 
   const toggleSidebar = () => {
+    if (window.matchMedia('(max-width: 1023px)').matches) setSettingsOpen(false)
     setSidebarOpen(open => {
       localStorage.setItem(SIDEBAR_OPEN_KEY, String(!open))
       return !open
@@ -636,6 +637,7 @@ export default function PlaygroundPage() {
   }
 
   const toggleSettings = () => {
+    if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(false)
     setSettingsOpen(open => {
       localStorage.setItem(SETTINGS_OPEN_KEY, String(!open))
       return !open
@@ -1026,6 +1028,7 @@ export default function PlaygroundPage() {
       })),
   ]
   function pickModel(v: string) {
+    if (window.matchMedia('(max-width: 1023px)').matches) setSettingsOpen(false)
     setSelectedModel(v)
     localStorage.setItem('playground.model', v)
   }
@@ -1049,7 +1052,15 @@ export default function PlaygroundPage() {
     // behaviour are untouched by the reshuffle.
     // Every lucide icon in the three panes draws at 1.5 instead of the default
     // 2: the page is dense with small glyphs and the bold stroke read heavy.
-    <div className="flex min-h-0 flex-1 overflow-hidden [&_svg]:stroke-[1.5]">
+    <div className="relative flex min-h-0 flex-1 overflow-hidden [&_svg]:stroke-[1.5]">
+      {(sidebarOpen || settingsOpen) && (
+        <button
+          type="button"
+          aria-label={t('common.close')}
+          onClick={() => { setSidebarOpen(false); setSettingsOpen(false) }}
+          className="absolute inset-0 z-30 bg-black/40 lg:hidden"
+        />
+      )}
       <ConversationSidebar
         conversations={conversations}
         activeId={conversationId}
@@ -1062,7 +1073,39 @@ export default function PlaygroundPage() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div ref={transcriptRef} className="min-h-0 flex-1 overflow-y-auto p-6">
+        {/* On phones the sidebars are drawers; this toolbar stays visible when they close. */}
+        <div className="flex shrink-0 items-center gap-2 border-b bg-card px-3 py-2 lg:hidden">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={t('playgroundSessions.showSidebar')}
+            aria-expanded={sidebarOpen}
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <PanelLeft className="size-5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleNewConversation}
+            aria-label={t('playgroundSessions.newChat')}
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <SquarePen className="size-5" />
+          </button>
+          <span className="min-w-0 flex-1 truncate text-center text-xs font-medium text-muted-foreground">
+            {activeModelLabel}
+          </span>
+          <button
+            type="button"
+            onClick={toggleSettings}
+            aria-label={t('playground.showSettings')}
+            aria-expanded={settingsOpen}
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <Settings2 className="size-5" />
+          </button>
+        </div>
+        <div ref={transcriptRef} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-6">
           {/* The chat sits in a centred column; the composer below shares its width. */}
           <div className="mx-auto h-full w-full max-w-3xl space-y-4">
           {messages.length === 0 ? (
@@ -1218,7 +1261,7 @@ export default function PlaygroundPage() {
         </div>
 
         <div
-          className={`mx-auto w-full max-w-3xl px-6 pb-4 pt-1 transition-colors ${dragging ? 'rounded-2xl bg-primary/5 ring-1 ring-inset ring-primary/40' : ''}`}
+          className={`mx-auto w-full max-w-3xl px-3 pb-3 pt-1 transition-colors sm:px-6 sm:pb-4 ${dragging ? 'rounded-2xl bg-primary/5 ring-1 ring-inset ring-primary/40' : ''}`}
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false) }}
           onDrop={e => {
