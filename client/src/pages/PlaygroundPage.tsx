@@ -644,6 +644,27 @@ export default function PlaygroundPage() {
     })
   }
 
+  // Switching from desktop to mobile must never leave two drawers obscuring the chat.
+  // Escape closes a drawer without changing its desktop preference.
+  useEffect(() => {
+    const mobile = window.matchMedia('(max-width: 1023px)')
+    const onResize = (event: MediaQueryListEvent) => {
+      if (event.matches) { setSidebarOpen(false); setSettingsOpen(false) }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (mobile.matches && event.key === 'Escape') {
+        setSidebarOpen(false)
+        setSettingsOpen(false)
+      }
+    }
+    mobile.addEventListener('change', onResize)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      mobile.removeEventListener('change', onResize)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [])
+
   // Reopen whatever was on screen before the reload. A stored id that no longer
   // exists (deleted in another tab) just falls back to an empty transcript.
   useEffect(() => {
