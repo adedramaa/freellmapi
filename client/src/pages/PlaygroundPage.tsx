@@ -1077,7 +1077,7 @@ export default function PlaygroundPage() {
       {(sidebarOpen || settingsOpen) && (
         <button
           type="button"
-          aria-label={t('common.close')}
+          aria-label={t('common.dismiss')}
           onClick={() => { setSidebarOpen(false); setSettingsOpen(false) }}
           className="absolute inset-0 z-30 bg-black/40 lg:hidden"
         />
