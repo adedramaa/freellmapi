@@ -84,8 +84,8 @@ export function ConversationSidebar({
 
   return (
     <div
-      className={`relative shrink-0 overflow-hidden border-e bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none ${
-        open ? 'w-60' : 'w-11'
+      className={`absolute inset-y-0 start-0 z-40 shrink-0 overflow-hidden bg-card shadow-xl transition-[width] duration-200 ease-out motion-reduce:transition-none lg:relative lg:z-auto lg:border-e lg:shadow-none ${
+        open ? 'w-60 border-e' : 'invisible w-0 lg:visible lg:w-11'
       }`}
     >
       <div

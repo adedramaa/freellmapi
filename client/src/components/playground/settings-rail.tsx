@@ -165,8 +165,8 @@ export function SettingsRail({
 
   return (
     <div
-      className={`relative shrink-0 overflow-hidden border-s bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none ${
-        open ? 'w-72' : 'w-11'
+      className={`absolute inset-y-0 end-0 z-40 shrink-0 overflow-hidden bg-card shadow-xl transition-[width] duration-200 ease-out motion-reduce:transition-none lg:relative lg:z-auto lg:border-s lg:shadow-none ${
+        open ? 'w-72 border-s' : 'invisible w-0 lg:visible lg:w-11'
       }`}
     >
       <div
