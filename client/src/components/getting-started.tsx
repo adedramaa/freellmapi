@@ -66,13 +66,13 @@ export function GettingStarted() {
   }
 
   return (
-    <section className="rounded-3xl border bg-card p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+    <section className="rounded-3xl border bg-card p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold">{t('setup.title')}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t('setup.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="text-xs tabular-nums text-muted-foreground">{t('setup.progress', { done: doneCount, total: 3 })}</span>
           <button
             type="button"
@@ -160,19 +160,21 @@ function Step({
   action: ReactNode
 }) {
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-2 py-2.5 sm:flex-nowrap">
-      <span
+    <li className="flex flex-col items-stretch gap-2 rounded-xl px-2 py-2.5 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <span
         className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium tabular-nums ${
           done ? 'bg-emerald-600 text-white dark:bg-emerald-500' : 'border text-muted-foreground'
         }`}
       >
         {done ? <Check className="size-3" /> : index}
-      </span>
-      <div className="min-w-0 flex-1">
+        </span>
+        <div className="min-w-0 flex-1">
         <p className={`text-sm ${done ? 'text-muted-foreground line-through decoration-muted-foreground/40' : 'font-medium'}`}>{title}</p>
         {!done && <p className="text-xs text-muted-foreground">{description}</p>}
+        </div>
       </div>
-      {!done && <div className="ml-8 shrink-0 sm:ml-0">{action}</div>}
+      {!done && <div className="ml-8 min-w-0 sm:ml-0 sm:shrink-0">{action}</div>}
     </li>
   )
 }
