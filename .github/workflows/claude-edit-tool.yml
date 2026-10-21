@@ -1,0 +1,105 @@
+name: Claude Code - Isolated Edit Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/claude-edit-tool.yml'
+      - '.github/agent/claude_edit_audit.py'
+      - '.github/agent/test_claude_edit_audit.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/claude-edit-tool.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-edit-isolated-verification
+  cancel-in-progress: false
+
+jobs:
+  isolated-edit-proof:
+    if: >-
+      github.repository == 'adedramaa/freellmapi' &&
+      (github.event_name == 'pull_request' ||
+      (github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'test(claude-edit):')))))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout trusted source with no stored push credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Run independent audit safety tests without secrets
+        run: python3 -m unittest discover -s .github/agent -p test_claude_edit_audit.py -v
+
+      - name: Install official Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+      - name: Confirm official CLI
+        run: claude --version
+
+      - name: Prove Read and Edit on a temporary fixture, never the repository
+        if: >-
+          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'test(claude-edit):'))
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '384'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ANTHROPIC_AUTH_TOKEN" ]]; then
+            echo "Missing unified FreeLLMAPI secret."
+            exit 1
+          fi
+          if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+            echo "Repository is not clean before the isolated Edit test."
+            exit 1
+          fi
+          SANDBOX="$(mktemp -d "$RUNNER_TEMP/claude-edit-XXXXXX")"
+          printf 'status: before\nproof: river-glass-5831\n' > "$SANDBOX/task.txt"
+          printf 'status: after\nproof: river-glass-5831\n' > "$RUNNER_TEMP/expected-edit.txt"
+          echo "Running Claude Code CLI with ONLY Read and Edit tools on a temp file."
+          cd "$SANDBOX"
+          if ! timeout 155 claude --bare -p \
+            "First use Read to open task.txt. Next use Edit on that same file to replace exactly 'status: before' with 'status: after'. Do not change the proof line. Do not use any other tools. Then respond DONE." \
+            --model "$ANTHROPIC_MODEL" --max-turns 4 \
+            --tools "Read,Edit" --allowedTools Read Edit --permission-mode dontAsk \
+            --strict-mcp-config --disable-slash-commands --no-session-persistence \
+            --system-prompt "You are in an isolated temporary folder. Read and edit only task.txt. No other files." \
+            --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/claude-edit-events.jsonl" 2> "$RUNNER_TEMP/claude-edit-error.log"; then
+            echo "Claude Code could not finish the isolated Edit test."
+            exit 1
+          fi
+          cd "$GITHUB_WORKSPACE"
+          python3 .github/agent/claude_edit_audit.py "$RUNNER_TEMP/claude-edit-events.jsonl" "$SANDBOX/task.txt"
+          if ! cmp -s "$SANDBOX/task.txt" "$RUNNER_TEMP/expected-edit.txt"; then
+            echo "FAIL: Edit did not produce exactly the permitted fixture content."
+            exit 1
+          fi
+          file_count="$(find "$SANDBOX" -type f | wc -l)"
+          if [[ "$file_count" -ne 1 ]]; then
+            echo "FAIL: unexpected extra files in isolated work directory."
+            exit 1
+          fi
+          if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+            echo "FAIL: checkout modified; rejecting Edit trial."
+            exit 1
+          fi
+          echo "PASS: verified Claude Code Edit tool, exact permitted change, clean checkout."
