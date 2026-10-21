@@ -108,7 +108,7 @@ export function GettingStarted() {
           action={
             <Link to="/playground">
               <Button variant="outline" size="sm">
-                {t('setup.step2Cta')}
+                {t('setup.step2Cta)}
                 <ArrowRight data-icon="inline-end" className="size-3.5" />
               </Button>
             </Link>
@@ -159,8 +159,9 @@ function Step({
   description: string
   action: ReactNode
 }) {
+  const isFirst = index === 1
   return (
-    <li className="flex flex-col items-stretch gap-2 rounded-xl px-2 py-2.5 sm:flex-row sm:items-center">
+    <li className={`flex flex-col items-stretch ${isFirst ? 'gap-4' : 'gap-2'} rounded-xl px-2 py-2.5 sm:flex-row sm:items-center`}>
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <span
           className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium tabular-nums ${
@@ -170,8 +171,8 @@ function Step({
           {done ? <Check className="size-3" /> : index}
         </span>
         <div className="min-w-0 flex-1">
-          <p className={`text-sm ${done ? 'text-muted-foreground line-through decoration-muted-foreground/40' : 'font-medium'}`}>{title}</p>
-          {!done && <p className="text-xs text-muted-foreground">{description}</p>}
+          <p className={`text-base sm:text-sm ${done ? 'text-muted-foreground line-through decoration-muted-foreground/40' : 'font-medium'}`}>{title}</p>
+          {!done && <p className={`text-sm sm:text-xs text-muted-foreground`}>{description}</p>}
         </div>
       </div>
       {!done && <div className="ml-8 min-w-0 sm:ml-0 sm:shrink-0">{action}</div>}
