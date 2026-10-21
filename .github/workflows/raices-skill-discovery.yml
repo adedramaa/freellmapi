@@ -1,0 +1,64 @@
+name: Claude Code Raices Skill Discovery Check
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/raices-skill-discovery.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout installed project skill
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check documented Claude Code skill structure
+        shell: bash
+        run: |
+          test -s CLAUDE.md
+          test -s .claude/skills/catalogo-editorial-raices/SKILL.md
+          grep -Fq 'name: catalogo-editorial-raices' .claude/skills/catalogo-editorial-raices/SKILL.md
+          grep -Fq 'NO reemplazar ni publicar' CLAUDE.md
+      - name: Inspect read-only Claude Code session skill metadata
+        shell: bash
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+        run: |
+          set -u
+          npm install --global @anthropic-ai/claude-code@2.1.296
+          claude --version
+          set +e
+          timeout 75 claude -p 'Indica OK. No uses ninguna herramienta ni modifiques archivos.' \
+            --model "$ANTHROPIC_MODEL" --max-turns 1 \
+            --tools "" --disallowedTools Bash Edit Write \
+            --permission-mode plan --strict-mcp-config \
+            --no-session-persistence --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/claude-init.jsonl" 2>"$RUNNER_TEMP/claude-init.err"
+          set -e
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"claude-init.jsonl"
+          inits=[]
+          for line in p.read_text(errors="replace").splitlines():
+            try: e=json.loads(line)
+            except ValueError:continue
+            if e.get("type")=="system" and e.get("subtype")=="init":inits.append(e)
+          assert inits, "Claude CLI did not return initialization metadata"
+          e=inits[0]
+          skillnames=[str(s) for s in e.get("skills",[])]
+          slashnames=[str(s) for s in e.get("slash_commands",[])]
+          recognized=any("catalogo-editorial-raices" in n for n in skillnames+slashnames)
+          print(json.dumps({"recognized":recognized,"relevant_skills":[x for x in skillnames if "raices" in x],
+            "relevant_slash_commands":[x for x in slashnames if "raices" in x],
+            "claude_code_version":e.get("claude_code_version")},indent=2))
+          assert recognized, "Custom skill did not appear in Claude Code session metadata"
+          PY
