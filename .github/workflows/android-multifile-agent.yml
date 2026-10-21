@@ -1,0 +1,105 @@
+name: Android Multi-file Agent (FreeLLMAPI)
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Validate without AI or propose a multi-file draft PR"
+        type: choice
+        options:
+          - validate
+          - propose
+        default: validate
+        required: true
+      files:
+        description: "Two or three existing files, separated by commas"
+        type: string
+        required: true
+        default: "client/src/components/getting-started.tsx,client/src/lib/composer-geometry.ts"
+      task:
+        description: "One public task; never include a secret"
+        type: string
+        required: true
+        default: "Improve one existing comment in each file without changing behavior."
+      model:
+        description: "FreeLLMAPI model"
+        type: string
+        required: true
+        default: "openai/gpt-oss-20b"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-api-multifile-agent
+  cancel-in-progress: false
+
+jobs:
+  proposal:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out trusted main branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: true
+
+      - name: Test safety controls without secrets
+        run: python3 -m unittest discover -s .github/agent -p 'test_*.py' -v
+
+      - name: Validate task and paths without a model call
+        env:
+          AGENT_TASK: ${{ inputs.task }}
+          AGENT_FILES: ${{ inputs.files }}
+        run: python3 .github/agent/multifile_agent.py --validate
+
+      - name: Request coordinated multi-file proposal
+        if: inputs.operation == 'propose'
+        env:
+          AGENT_TASK: ${{ inputs.task }}
+          AGENT_FILES: ${{ inputs.files }}
+          AGENT_MODEL: ${{ inputs.model }}
+          FREELLMAPI_API_KEY: ${{ secrets.FREELLMAPI_API_KEY }}
+        run: python3 .github/agent/multifile_agent.py
+
+      - name: Create human-review draft pull request
+        if: inputs.operation == 'propose'
+        env:
+          AGENT_TASK: ${{ inputs.task }}
+          AGENT_FILES: ${{ inputs.files }}
+          GH_TOKEN: ${{ github.token }}
+          PR_BRANCH: agent/multi-${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No code changes. No PR."
+            exit 0
+          fi
+          python3 .github/agent/multifile_agent.py --verify-diff
+          git diff --check
+          mapfile -d '' -t changed < <(git diff --name-only -z)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$PR_BRANCH"
+          git add -- "${changed[@]}"
+          git commit -m "agent: propose reviewed multi-file change"
+          git push origin "$PR_BRANCH"
+          {
+            echo "## Multi-file FreeLLMAPI proposal - HUMAN REVIEW REQUIRED"
+            echo
+            echo "Files selected:"
+            printf '%s\n' "$AGENT_FILES"
+            echo
+            echo "Requested task:"
+            printf '%s\n' "$AGENT_TASK"
+            echo
+            echo "Model output is untrusted. Review every changed line."
+            echo "CI and human review are required; Render auto-deploy stays off."
+            echo "This is an interim editor, not Claude Code."
+          } > "$RUNNER_TEMP/multi-agent-pr-body.md"
+          gh pr create --repo "$GITHUB_REPOSITORY" --head "$PR_BRANCH" --base main --draft --title "agent: review coordinated multi-file proposal" --body-file "$RUNNER_TEMP/multi-agent-pr-body.md"
