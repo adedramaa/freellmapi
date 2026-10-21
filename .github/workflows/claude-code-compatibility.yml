@@ -29,7 +29,12 @@ concurrency:
 
 jobs:
   claude-code-compatibility:
-    if: github.repository == 'adedramaa/freellmapi' && (github.event_name == 'pull_request' || (github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'test(claude): one-shot minimal Groq gateway probe')))))
+    if: >-
+      github.repository == 'adedramaa/freellmapi' &&
+      (github.event_name == 'pull_request' ||
+      (github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'claude-groq-oneshot-probe')))))
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -42,7 +47,9 @@ jobs:
           claude --version
 
       - name: Optional gateway probe - one prompt, no tools and no code edits
-        if: (github.event_name == 'workflow_dispatch' && inputs.test_mode == 'gateway_probe') || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'test(claude): one-shot minimal Groq gateway probe'))
+        if: >-
+          (github.event_name == 'workflow_dispatch' && inputs.test_mode == 'gateway_probe') ||
+          (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'claude-groq-oneshot-probe'))
         env:
           ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
           ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
