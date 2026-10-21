@@ -34,3 +34,15 @@ def inspect_stream(raw: str, expected: str) -> dict:
         "answer_matches_fixture": answer.strip() == expected,
         "errored": errors,
     }
+
+if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    if len(sys.argv) != 2:
+        raise SystemExit("Expected one captured stream-json file path.")
+    raw = Path(sys.argv[1]).read_text(encoding="utf-8")
+    result = inspect_stream(raw, "atlantic-cedar-4267")
+    print("Claude Code Read audit:", json.dumps(result, sort_keys=True))
+    if not result["ok"]:
+        raise SystemExit("FAIL: exact Read tool use and fixture proof not established.")
+    print("PASS: real Claude Code Read tool invoked and verified.")
