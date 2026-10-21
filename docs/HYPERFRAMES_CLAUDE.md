@@ -15,7 +15,7 @@ A GitHub Actions runner is temporary. One-time shell installations disappear whe
 - uses: ./.github/actions/setup-hyperframes
 \`\`\`
 
-It uses Node.js 22 and installs the **HyperFrames router skill only**, non-interactively and only for Claude Code:
+It uses Node.js 22, installs the free FFmpeg package on the temporary Ubuntu runner if missing, and installs the **HyperFrames router skill only**, non-interactively and only for Claude Code:
 
 \`\`\`bash
 npx --yes skills add heygen-com/hyperframes --skill hyperframes --agent claude-code --yes
@@ -23,7 +23,7 @@ npx --yes skills add heygen-com/hyperframes --skill hyperframes --agent claude-c
 
 The interactive form supplied by the user starts a picker; \`--skill hyperframes\` avoids silently installing every published skill on a non-interactive server. To add the **recommended core set** later, in a separate approved video workflow use \`npx hyperframes skills update\` (the project maintainers' documented non-interactive method).
 
-The verification workflow \`.github/workflows/hyperframes-skill-verify.yml\` checks that the installer actually puts a nonempty \`.claude/skills/hyperframes/SKILL.md\` into the checkout, verifies Node.js, FFmpeg and authentic Claude Code, and ensures it did not change tracked application source. No API keys, paid services or model queries are needed for this check. No PR merge or Render deploy is performed by the installer.
+The verification workflow \`.github/workflows/hyperframes-skill-verify.yml\` checks that the installer actually puts a nonempty \`.claude/skills/hyperframes/SKILL.md\` into the checkout, verifies Node.js, the installed FFmpeg package and authentic Claude Code, and ensures it did not change tracked application source. No API keys, paid services or model queries are needed for this check. No PR merge or Render deploy is performed by the installer.
 
 ## Important limitation of the current Claude Code automation
 
