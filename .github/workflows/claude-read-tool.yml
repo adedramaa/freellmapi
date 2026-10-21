@@ -1,0 +1,87 @@
+name: Claude Code - Read Tool Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/claude-read-tool.yml'
+      - '.github/agent/claude_stream_audit.py'
+      - '.github/agent/test_claude_stream_audit.py'
+      - 'docs/CLAUDE_TOOL_READ_FIXTURE.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/claude-read-tool.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-read-only-probe
+  cancel-in-progress: false
+
+jobs:
+  read-only-proof:
+    if: >-
+      github.repository == 'adedramaa/freellmapi' &&
+      (github.event_name == 'pull_request' ||
+      (github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'test(claude-read):')))))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Check out the public repository without stored push credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify stream-json evidence parser without any API secret
+        run: python3 -m unittest discover -s .github/agent -p test_claude_stream_audit.py -v
+
+      - name: Install authentic Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+      - name: Verify authentic Claude Code CLI
+        run: claude --version
+
+      - name: Prove Read tool use via FreeLLMAPI - only on trusted main
+        if: >-
+          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'test(claude-read):'))
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: "256"
+          CLAUDE_CODE_SIMPLE: "1"
+          DISABLE_TELEMETRY: "1"
+          DISABLE_AUTOUPDATER: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ANTHROPIC_AUTH_TOKEN" ]]; then
+            echo "Unified FreeLLMAPI secret is unavailable"
+            exit 1
+          fi
+          echo "Calling authentic Claude Code with only the Read tool. No writes permitted."
+          # Raw model transcript is private to the ephemeral runner. No secrets, prompts,
+          # file contents or provider logs are ever printed or uploaded.
+          if ! timeout 150 claude --bare -p "Use the Read tool to open docs/CLAUDE_TOOL_READ_FIXTURE.md. Print ONLY the value after tool-read-proof:. Never guess." \
+            --model "$ANTHROPIC_MODEL" --max-turns 3 \
+            --tools Read --allowedTools Read --permission-mode dontAsk \
+            --strict-mcp-config --disable-slash-commands --no-session-persistence \
+            --system-prompt "Use Read once to inspect a local file, then answer." \
+            --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/claude-read.jsonl" 2> "$RUNNER_TEMP/claude-read.stderr"; then
+            echo "Claude Code did not finish the tool read. No code was changed."
+            exit 1
+          fi
+          python3 .github/agent/claude_stream_audit.py "$RUNNER_TEMP/claude-read.jsonl"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Unexpected local changes; read-only execution rejected."
+            exit 1
+          fi
+          echo "Read-only Claude Code proof finished; no push or deployment."
