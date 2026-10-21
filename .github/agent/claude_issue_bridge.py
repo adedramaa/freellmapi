@@ -24,6 +24,27 @@ MAX_CHANGED_LINES = 35
 MAX_RESULT_BYTES = 6_000
 
 
+def commit_changes(root: Path, sha: str) -> list[tuple[str, str]]:
+    """Inspect the ACTUAL Git commit, not optional push-webhook file summaries."""
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError("Invalid dispatch commit SHA.")
+    subprocess.run(
+        ["git", "fetch", "--no-tags", "--depth=2", "origin", sha],
+        cwd=root, capture_output=True, check=True, timeout=40,
+    )
+    result = subprocess.run(
+        ["git", "diff-tree", "--no-commit-id", "--name-status", "-r", sha],
+        cwd=root, capture_output=True, check=True, timeout=15,
+    )
+    items = []
+    for line in result.stdout.decode("utf-8").splitlines():
+        parts = line.split("\t", 1)
+        if len(parts) != 2:
+            raise ValueError("Unexpected Git diff-tree output.")
+        items.append((parts[0], parts[1]))
+    return items
+
+
 def get_request(root: Path, event: dict) -> tuple[str, str, Path]:
     """Only an owner's single new dispatch-file push can invoke Claude Code."""
     if (
@@ -36,11 +57,14 @@ def get_request(root: Path, event: dict) -> tuple[str, str, Path]:
     commits = event.get("commits")
     if not isinstance(commit, dict) or not isinstance(commits, list) or len(commits) != 1:
         raise ValueError("Expected exactly one new dispatch commit.")
-    added, modified, removed = commit.get("added"), commit.get("modified"), commit.get("removed")
-    if not isinstance(added, list) or len(added) != 1 or modified or removed:
-        raise ValueError("One new request file, no other changes, is required.")
-    request_path = added[0]
-    if not isinstance(request_path, str) or not re.fullmatch(
+    sha = event.get("after")
+    if sha != commit.get("id"):
+        raise ValueError("Push head commit identity mismatch.")
+    files = commit_changes(root, sha)
+    if len(files) != 1 or files[0][0] != "A":
+        raise ValueError("The real commit must add exactly one new request file.")
+    request_path = files[0][1]
+    if not re.fullmatch(
         r"\.claude-requests/task-[0-9]{8}-[a-z0-9-]{1,50}\.json", request_path
     ):
         raise ValueError("Invalid dispatch filename.")
