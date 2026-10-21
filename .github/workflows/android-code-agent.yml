@@ -1,0 +1,112 @@
+name: Android Code Agent (FreeLLMAPI)
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Validate first, or propose a one-file change as a draft PR"
+        type: choice
+        options:
+          - validate
+          - propose
+        default: validate
+        required: true
+      file:
+        description: "Existing file to edit in client/src or docs (max 12 KB)"
+        type: string
+        default: "client/src/components/getting-started.tsx"
+        required: true
+      task:
+        description: "One specific request (public in GitHub workflow history; no secrets)"
+        type: string
+        default: "Improve the readability of the first-steps card on a phone without changing its behavior."
+        required: true
+      model:
+        description: "Available FreeLLMAPI model"
+        type: string
+        default: "openai/gpt-oss-20b"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-api-android-agent
+  cancel-in-progress: false
+
+jobs:
+  safe-code-proposal:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out trusted main branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+
+      - name: Test agent safeguards without secrets
+        run: python3 -m unittest discover -s .github/agent -p 'test_*.py' -v
+
+      - name: Validate task and path without a model call
+        env:
+          AGENT_TASK: ${{ inputs.task }}
+          AGENT_FILE: ${{ inputs.file }}
+        run: python3 .github/agent/android_code_agent.py --validate
+
+      - name: Generate one-file code proposal
+        if: inputs.operation == 'propose'
+        env:
+          AGENT_TASK: ${{ inputs.task }}
+          AGENT_FILE: ${{ inputs.file }}
+          AGENT_MODEL: ${{ inputs.model }}
+          FREELLMAPI_API_KEY: ${{ secrets.FREELLMAPI_API_KEY }}
+        run: python3 .github/agent/android_code_agent.py
+
+      - name: Create review-only draft PR
+        if: inputs.operation == 'propose'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AGENT_FILE: ${{ inputs.file }}
+          AGENT_TASK: ${{ inputs.task }}
+          PR_BRANCH: agent/android-${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes generated. No PR needed."
+            exit 0
+          fi
+          changed="$(git diff --name-only)"
+          if [[ "$changed" != "$AGENT_FILE" ]]; then
+            echo "Agent attempted out-of-scope changes."
+            exit 1
+          fi
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$PR_BRANCH"
+          git add -- "$AGENT_FILE"
+          git commit -m "agent: propose one-file change for review"
+          git push origin "$PR_BRANCH"
+          {
+            echo "## Proposal from FreeLLMAPI (review required)"
+            echo
+            echo "**Target:** $AGENT_FILE"
+            echo
+            echo "**User request:**"
+            printf '%s\n' "$AGENT_TASK"
+            echo
+            echo "Generated code is untrusted. Review the diff and let CI run."
+            echo "This workflow does not merge or deploy anything."
+          } > agent-pr-body.md
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$PR_BRANCH" \
+            --base main \
+            --draft \
+            --title "agent: review proposed update to $AGENT_FILE" \
+            --body-file agent-pr-body.md
