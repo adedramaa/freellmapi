@@ -68,7 +68,7 @@ def f(t):
     d.rounded_rectangle((27,887,27+max(1,int((486*t)/duration)),895),radius=4,fill=aqua)
     d.text((28,917),'ESPALDA ESTABLE  •  PIES FIRMES',font=ft(16),fill='#a3b2b5')
     return im
-cmd=['ffmpeg','-y','-loglevel','error','-f','rawvideo','-pix_fmt','rgb24','-s',f'{W}x{H}','-r',str(FPS),'-i','pipe:0','-i','out/voice.wav','-c:v','libx264','-preset','ultrafast','-crf','24','-pix_fmt','yuv420p','-c:a','aac','-shortest','-movflags','+faststart','out/sentadilla-claude-code.mp4']
+cmd=['ffmpeg','-y','-loglevel','error','-f','rawvideo','-pix_fmt','rgb24','-s',f'{W}x{H}','-r',str(FPS),'-i','pipe:0','-i','out/voice.wav','-c:v','libx264','-preset','ultrafast','-crf','24','-pix_fmt','yuv420p','-c:a','aac','-movflags','+faststart','out/sentadilla-claude-code.mp4']
 proc=subprocess.Popen(cmd,stdin=subprocess.PIPE)
 for i in range(math.ceil(duration*FPS)):
     proc.stdin.write(f(i/FPS).tobytes())
