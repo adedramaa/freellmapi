@@ -1,0 +1,55 @@
+name: Claude Code - Official CLI Compatibility
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Install official Claude Code only, or test FreeLLMAPI compatibility"
+        type: choice
+        required: true
+        options:
+          - install_only
+          - gateway_probe
+        default: install_only
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-code-free-gateway-probe
+  cancel-in-progress: false
+
+jobs:
+  claude-code-compatibility:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Install official Claude Code CLI (fixed version)
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+      - name: Confirm genuine Claude Code executable
+        run: |
+          command -v claude
+          claude --version
+
+      - name: Optional gateway probe - one prompt, no tools and no code edits
+        if: inputs.test_mode == 'gateway_probe'
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          DISABLE_TELEMETRY: "1"
+          DISABLE_AUTOUPDATER: "1"
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: "512"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ANTHROPIC_AUTH_TOKEN" ]]; then
+            echo "Missing FreeLLMAPI unified key secret"
+            exit 1
+          fi
+          # No real Anthropic API credentials are set; no paid provider fallback.
+          # Does NOT prove tool use; tool-use compatibility needs a later guarded test.
+          timeout 150 claude -p "Reply with only OK" --model "$ANTHROPIC_MODEL" --max-turns 1 --allowedTools "" --output-format text
