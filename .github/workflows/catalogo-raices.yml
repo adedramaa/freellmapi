@@ -1,0 +1,131 @@
+name: Raices Catalogo Editorial con Claude Code
+on:
+  push:
+    branches: [catalogo-raices-20261021]
+    paths: [catalogo/raices/READY.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generar-catalogo:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    steps:
+      - name: Checkout detached catalog branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install official Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+      - name: Claude Code editorial design work in isolated Python brief
+        id: claude
+        continue-on-error: true
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '384'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANTHROPIC_AUTH_TOKEN"
+          timeout 175 claude --bare \
+            -p 'Use Read on catalogo/raices/editorial.py and then Edit that SAME file only. Improve just the COVER_TITLE value to make the Spanish catalog cover more editorial, sophisticated, memorable, and no more than four words. Preserve Python syntax and every other line. Do not read any other file. Do not use tools except Read and Edit.' \
+            --model "$ANTHROPIC_MODEL" --max-turns 5 \
+            --tools "Read,Edit" --allowedTools Read Edit \
+            --permission-mode dontAsk --strict-mcp-config \
+            --disable-slash-commands --no-session-persistence \
+            --system-prompt 'Make one minimal visual copy decision in one file. Read then Edit only catalogo/raices/editorial.py. Never use Bash, Write, other files or resources.' \
+            --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/raices-claude-stream.jsonl" \
+            2> "$RUNNER_TEMP/raices-claude-stderr.txt"
+
+      - name: Audit actual Claude Code edits; revert if unverified
+        env:
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+        shell: bash
+        run: |
+          mkdir -p catalogo/raices/dist
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          out=Path("catalogo/raices/dist/claude_code_ejecucion.json")
+          stream=Path(os.environ.get("RUNNER_TEMP","/tmp"))/"raices-claude-stream.jsonl"
+          names=[];complete=False
+          if stream.exists():
+              for line in stream.read_text(errors="replace").splitlines():
+                  try:event=json.loads(line)
+                  except ValueError:continue
+                  if event.get("type")=="result" and not event.get("is_error"):
+                      complete=True
+                  if event.get("type")=="assistant":
+                      msg=event.get("message") or {}
+                      for block in msg.get("content") or []:
+                          if block.get("type")=="tool_use":
+                              names.append(block.get("name"))
+          changed=subprocess.run(["git","diff","--name-only"],
+                        capture_output=True,text=True,check=True).stdout.strip().splitlines()
+          path="catalogo/raices/editorial.py"
+          verified=(os.environ.get("CLAUDE_OUTCOME")=="success" and
+                  names==["Read","Edit"] and complete and changed==[path])
+          if verified:
+              check=subprocess.run(["python3","-m","py_compile",path],
+                       capture_output=True,text=True)
+              verified=check.returncode==0
+          if not verified:
+              subprocess.run(["git","checkout","--",path],check=True)
+          result={"real_claude_code_edit_verified":verified,
+                  "tools":names,"change_paths":changed,
+                  "raw_success":os.environ.get("CLAUDE_OUTCOME"),
+                  "editorial_fallback_used":not verified}
+          out.write_text(json.dumps(result,indent=2))
+          print(json.dumps(result))
+          PY
+
+      - name: Install PDF and source verification packages
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install requests beautifulsoup4 pillow reportlab pymupdf
+
+      - name: Generate from official Raices product photographs
+        shell: bash
+        run: |
+          cd catalogo/raices
+          python3 build.py
+
+      - name: Verify PDF proof
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import fitz,json
+          root=Path("catalogo/raices/dist")
+          pdf=next(root.glob("Raices_Regalos_Catalogo_*.pdf"))
+          doc=fitz.open(pdf)
+          manifest=json.loads((root/"trazabilidad_productos.json").read_text())
+          assert 12<=len(doc)<=25
+          assert 45<=manifest["verified_count"]<=96
+          assert len(doc)==1+(manifest["verified_count"]+3)//4
+          assert all(p.get_images() for p in doc)
+          assert "sin precios" in doc.metadata.get("title","").lower()
+          print(f"VALIDATED {len(doc)} pages and {manifest['verified_count']} authentic SKU-photo pairs")
+          PY
+
+      - name: Export finished PDF, preview, audit and SKU sources
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: catalogo-raices-2026-artefinal
+          path: catalogo/raices/dist/
+          retention-days: 30
+          if-no-files-found: warn
