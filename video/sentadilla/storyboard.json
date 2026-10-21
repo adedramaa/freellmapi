@@ -1,0 +1,42 @@
+{
+  "project": "Sentadilla técnica - 3 ángulos",
+  "format": "vertical 9:16",
+  "language": "español latino",
+  "scenes": [
+    {
+      "angle": "front",
+      "seconds": 12,
+      "title": "DE FRENTE",
+      "caption": "PIES FIRMES / RODILLAS ALINEADAS",
+      "voice": "¿Quieres mejorar tu sentadilla? De frente, separa los pies más o menos al ancho de los hombros. Deja las puntas un poquito afuera y acompaña su dirección con las rodillas."
+    },
+    {
+      "angle": "side",
+      "seconds": 12,
+      "title": "DE PERFIL",
+      "caption": "ABDOMEN FIRME / ESPALDA ESTABLE",
+      "voice": "Ahora de perfil: activa el abdomen y mantén estable la espalda. Baja despacio, como si te sentaras entre las piernas. El pie completo permanece apoyado."
+    },
+    {
+      "angle": "three",
+      "seconds": 12,
+      "title": "VISTA A 45 GRADOS",
+      "caption": "BAJA CÓMODO / SUBE FIRME",
+      "voice": "Desde el ángulo diagonal: baja solamente hasta donde puedas moverte con comodidad. Después, empuja el piso para subir, sin perder la estabilidad."
+    },
+    {
+      "angle": "front",
+      "seconds": 12,
+      "title": "EVITA LOS ERRORES",
+      "caption": "TALONES FIRMES / SIN COLAPSAR RODILLAS",
+      "voice": "Ojo con dos errores típicos: levantar los talones o dejar caer las rodillas hacia adentro. Busca control antes que velocidad."
+    },
+    {
+      "angle": "three",
+      "seconds": 8,
+      "title": "¡A ENTRENAR!",
+      "caption": "TÉCNICA PRIMERO. PESO DESPUÉS.",
+      "voice": "¡Listo! Practica sin peso primero. Cada repetición bien hecha cuenta."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+name: Claude Code - Squat Tutorial Video (isolated)
+on:
+  push:
+    branches: ['video/sentadilla-20261021']
+    paths:
+      - '.github/workflows/claude-squat-video.yml'
+      - 'video/sentadilla/**'
+permissions:
+  contents: read
+jobs:
+  make-tutorial:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated production branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up free local rendering prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq espeak ffmpeg python3-pil
+      - name: Install authentic Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.296
+      - name: Claude Code refines actual Spanish narration JSON
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '768'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANTHROPIC_AUTH_TOKEN"
+          timeout 165 claude --bare -p "Read video/sentadilla/storyboard.json. Then Edit ONLY this file and improve ONE narration voice sentence to make the bodyweight squat tutorial clearer and more fun in natural Latino Spanish. Keep valid JSON and exactly the same scene count, angles and seconds. Do not introduce medical promises or harmful form cues. Use only Read and Edit tools." \
+            --model "$ANTHROPIC_MODEL" --max-turns 5 \
+            --tools "Read,Edit" --allowedTools Read Edit \
+            --permission-mode dontAsk --strict-mcp-config \
+            --disable-slash-commands --no-session-persistence \
+            --output-format text
+          python3 -m json.tool video/sentadilla/storyboard.json >/dev/null
+          test -n "$(git diff -- video/sentadilla/storyboard.json)"
+          test -z "$(git diff --name-only -- . ':!video/sentadilla/storyboard.json')"
+      - name: Render actual MP4 from Claude Code revised storyboard
+        run: python3 video/sentadilla/render.py
+      - name: Export finished downloadable vertical video
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sentadilla-claude-code
+          path: out/sentadilla-claude-code.mp4
+          retention-days: 3
+          if-no-files-found: error
