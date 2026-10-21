@@ -42,3 +42,11 @@ Abrir Actions > Claude Code - Official CLI Compatibility.
 5. Reutilizarlo en proyectos aprobados sin PC, sin modificar otros proyectos sin autorización.
 
 El agente multiar­chivo de esta etapa es un recurso transitorio de seguridad y automatización; NO debe presentarse como Claude Code.
+
+## Incidencia real del primer gateway_probe (21/10/2026)
+
+La instalación del CLI oficial funcionó. La petición llegó a FreeLLMAPI por la ruta Anthropic Messages, pero Render informó que Groq tenía un límite de 8000 tokens/minuto y que Claude Code solicitaba aproximadamente 16117. El mensaje del CLI sobre "Request too large (max 32MB)" era engañoso para este caso: la pasarela NO probó un error real de tamaño de 32 MB ni llegó a ejecutar el modelo upstream.
+
+El primer script usaba --allowedTools "", que cambia los permisos de uso, pero no elimina los esquemas de herramientas del contexto. El diagnóstico corregido usa --tools "" para desactivar las herramientas, --bare y un system prompt mínimo. Así se ensaya SOLAMENTE la respuesta textual de Claude Code auténtico a través de FreeLLMAPI, dentro del límite gratuito si el prompt cabe.
+
+Para evitar un paso de móvil adicional, este cambio incluye una única ejecución en push a main, estrictamente acotada al mensaje de commit previsto, y luego se conserva la activación manual habitual. No se añade una clave de Anthropic ni un servicio pago. Aunque responda OK, las herramientas reales de lectura, escritura y tests seguirán pendientes de verificación.
