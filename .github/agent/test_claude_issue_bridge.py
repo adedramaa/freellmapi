@@ -3,8 +3,10 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+from types import SimpleNamespace
 
-from claude_issue_bridge import get_request, inspect_tool_stream, validate_diff
+from claude_issue_bridge import get_request, inspect_tool_stream, validate_diff, commit_changes
 
 
 class BridgeTests(unittest.TestCase):
@@ -20,15 +22,21 @@ class BridgeTests(unittest.TestCase):
             "ref": "refs/heads/claude-requests",
             "sender": {"login": "adedramaa"},
             "repository": {"full_name": "adedramaa/freellmapi"},
+            "after": "a" * 40,
             "head_commit": {
-                "added": [".claude-requests/task-20261021-pilot.json"],
-                "modified": [], "removed": [],
+                "id": "a" * 40,
                 "message": "claude-task: " + json.dumps(self.spec),
             },
-            "commits": [{"id": "test-commit"}],
+            "commits": [{"id": "a" * 40}],
         }
+        self.patch_changes = patch(
+            "claude_issue_bridge.commit_changes",
+            return_value=[("A", ".claude-requests/task-20261021-pilot.json")],
+        )
+        self.fake_changes = self.patch_changes.start()
 
     def tearDown(self):
+        self.patch_changes.stop()
         self.tmp.cleanup()
 
     def task(self, spec):
@@ -54,18 +62,28 @@ class BridgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             get_request(self.root, self.event)
         self.event["ref"] = "refs/heads/claude-requests"
-        self.event["head_commit"]["added"] = [".github/workflows/ci.yml"]
+        self.fake_changes.return_value = [("A", ".github/workflows/ci.yml")]
         with self.assertRaises(ValueError):
             get_request(self.root, self.event)
 
     def test_rejects_multifile_push_or_modified_files(self):
-        self.event["head_commit"]["added"].append("docs/other.md")
+        self.fake_changes.return_value = [("A", ".claude-requests/task-20261021-pilot.json"), ("A", "docs/other.md")]
         with self.assertRaises(ValueError):
             get_request(self.root, self.event)
-        self.event["head_commit"]["added"] = [".claude-requests/task-20261021-pilot.json"]
-        self.event["head_commit"]["modified"] = ["docs/other.md"]
+        self.fake_changes.return_value = [("M", ".claude-requests/task-20261021-pilot.json")]
         with self.assertRaises(ValueError):
             get_request(self.root, self.event)
+
+    def test_real_git_diff_tree_checker(self):
+        with patch("claude_issue_bridge.subprocess.run") as run:
+            run.side_effect = [
+                SimpleNamespace(stdout=b""),
+                SimpleNamespace(stdout=b"A\t.claude-requests/task-20261021-pilot.json\n"),
+            ]
+            changes = commit_changes(self.root, "a" * 40)
+            self.assertEqual(changes, [("A", ".claude-requests/task-20261021-pilot.json")])
+            self.assertIn("fetch", run.call_args_list[0].args[0])
+            self.assertIn("diff-tree", run.call_args_list[1].args[0])
 
     def test_rejects_sensitive_or_traversal_paths(self):
         for bad in ("../docs/demo.md", ".github/workflows/ci.yml", "server/index.ts", "docs/token.md"):
