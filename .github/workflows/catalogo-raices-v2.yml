@@ -1,0 +1,152 @@
+name: Raices Catalogo V2 - Claude Code and Anthropic Skills
+on:
+  push:
+    branches: [catalogo-raices-20261021]
+    paths: ['catalogo/raices/REBUILD_V2.txt']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: raices-catalogo-v2
+  cancel-in-progress: false
+jobs:
+  catalog:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Checkout isolated catalog branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Claude Code and official visual/PDF skills
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code@2.1.296
+          claude plugin marketplace add anthropics/skills
+          claude plugin install document-skills@anthropic-agent-skills --scope project
+          claude plugin install example-skills@anthropic-agent-skills --scope project
+          claude plugin list
+          test -s .claude/skills/catalogo-editorial-raices/SKILL.md
+          python3 -m py_compile catalogo/raices/build_v2.py catalogo/raices/editorial.py
+      - name: Claude Code applies the editorial skills to the cover
+        id: editorial
+        continue-on-error: true
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '1024'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANTHROPIC_AUTH_TOKEN"
+          find "$HOME/.claude/plugins" -name SKILL.md -type f | sort > "$RUNNER_TEMP/raices-skills.txt"
+          PDF_SKILL=$(grep '/skills/pdf/SKILL.md' "$RUNNER_TEMP/raices-skills.txt" | head -1 || true)
+          CANVAS_SKILL=$(grep '/skills/canvas-design/SKILL.md' "$RUNNER_TEMP/raices-skills.txt" | head -1 || true)
+          FRONT_SKILL=$(grep '/skills/frontend-design/SKILL.md' "$RUNNER_TEMP/raices-skills.txt" | head -1 || true)
+          test -n "$PDF_SKILL" && test -n "$CANVAS_SKILL" && test -n "$FRONT_SKILL"
+          cat > "$RUNNER_TEMP/raices-prompt.txt" <<EOF
+          Use Read to inspect these skill instruction documents:
+          $PDF_SKILL
+          $CANVAS_SKILL
+          $FRONT_SKILL
+          $GITHUB_WORKSPACE/.claude/skills/catalogo-editorial-raices/SKILL.md
+          Then Read $GITHUB_WORKSPACE/catalogo/raices/editorial.py and $GITHUB_WORKSPACE/catalogo/raices/build_v2.py.
+          Apply the principles: authentic photos, editorial hierarchy, clean white background, ample whitespace, no prices.
+          Use Edit to improve ONLY the COVER_SUBTITLE value in editorial.py, to a short elegant Spanish phrase (4-8 words). Preserve syntax and everything else.
+          Do not edit or create other files. Do not use Bash or Write.
+          EOF
+          timeout 155 claude --bare -p "$(cat "$RUNNER_TEMP/raices-prompt.txt")" \
+            --model "$ANTHROPIC_MODEL" --max-turns 10 \
+            --tools "Read,Edit" --allowedTools Read Edit \
+            --permission-mode dontAsk --strict-mcp-config \
+            --disable-slash-commands --no-session-persistence \
+            --system-prompt "Read official design/PDF skill files first, then optionally edit only the Spanish cover subtitle in catalogo/raices/editorial.py." \
+            --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/raices-claude-stream.jsonl" \
+            2> "$RUNNER_TEMP/raices-claude-stderr.log"
+      - name: Audit real Claude Code work and reject unrelated edits
+        env:
+          CLAUDE_OUTCOME: ${{ steps.editorial.outcome }}
+        shell: bash
+        run: |
+          mkdir -p catalogo/raices/dist
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          st=Path(os.environ['RUNNER_TEMP'])/'raices-claude-stream.jsonl'
+          tools=[];skillreads=0
+          if st.exists():
+            for line in st.read_text(errors='replace').splitlines():
+              try:e=json.loads(line)
+              except ValueError:continue
+              if e.get('type')=='assistant':
+                for block in (e.get('message') or {}).get('content',[]):
+                  if block.get('type')=='tool_use':
+                    tools.append(block.get('name'))
+                    if block.get('name')=='Read' and 'SKILL.md' in str(block.get('input')):skillreads+=1
+          changed=subprocess.run(['git','diff','--name-only'],capture_output=True,text=True).stdout.splitlines()
+          valid=not changed or changed==['catalogo/raices/editorial.py']
+          if valid and changed:valid=subprocess.run(['python3','-m','py_compile','catalogo/raices/editorial.py']).returncode==0
+          if not valid:subprocess.run(['git','checkout','--','catalogo/raices/editorial.py'],check=True)
+          record={'claude_succeeded':os.environ.get('CLAUDE_OUTCOME')=='success','skill_documents_read':skillreads,'tools':tools,'approved_edit':bool(changed and valid),'rejected_unapproved_edit':not valid}
+          Path('catalogo/raices/dist/CLAUDE_EJECUCION.json').write_text(json.dumps(record,indent=2))
+          print(json.dumps(record))
+          PY
+      - name: Install PDF authoring tools
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install requests beautifulsoup4 pillow reportlab pymupdf
+      - name: Generate 2026 catalog with original Raices photos
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd catalogo/raices
+          python3 build_v2.py
+      - name: Full PDF quality audit and contact sheet
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import fitz,json,re
+          from PIL import Image
+          out=Path('catalogo/raices/dist')
+          p=out/'Raices_Regalos_Catalogo_2026_Editorial_V2.pdf'
+          assert p.exists() and p.stat().st_size>200000
+          m=json.loads((out/'trazabilidad_productos.json').read_text())
+          with fitz.open(p) as d:
+            assert 12<=len(d)<=25 and len(d)==1+(m['verified_count']+3)//4 and m['verified_count']>=45
+            assert all(pg.get_images() for pg in d)
+            assert not any(re.search(r'\$\s*\d+|Precio por',pg.get_text(),re.I) for pg in d)
+            thumbnails=[]
+            for pg in d:
+              for block in pg.get_text('dict')['blocks']:
+                if block.get('type')!=0:continue
+                for row in block.get('lines',[]):
+                  for s in row.get('spans',[]):
+                    x0,y0,x1,y1=s['bbox']
+                    assert x0>=-1 and x1<=pg.rect.width+1 and y0>=-1 and y1<=pg.rect.height+1, (pg.number+1,s['text'])
+              pix=pg.get_pixmap(matrix=fitz.Matrix(.28,.28),alpha=False)
+              thumbnails.append(Image.frombytes('RGB',(pix.width,pix.height),pix.samples))
+            w,h=thumbnails[0].size;pad=12
+            sheet=Image.new('RGB',(5*w+6*pad,5*h+6*pad),'#E6E6E6')
+            for i,im in enumerate(thumbnails):sheet.paste(im,(pad+(i%5)*(w+pad),pad+(i//5)*(h+pad)))
+            sheet.save(out/'VISTA_COMPLETA_25_PAGINAS.jpg',quality=88)
+            print('PASS',len(d),'pages',m['verified_count'],'photos/SKUs','0 prices')
+          PY
+      - name: Export review-only catalog and preview
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: raices-catalogo-editorial-v2
+          path: catalogo/raices/dist/
+          retention-days: 30
+          if-no-files-found: warn
