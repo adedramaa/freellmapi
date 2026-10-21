@@ -7,6 +7,15 @@ runs:
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
         node-version: '22'
+    - name: Install FFmpeg for future local video rendering
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v ffmpeg >/dev/null 2>&1; then
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg
+        fi
+        command -v ffmpeg
     - name: Install HyperFrames skill (Claude Code only, noninteractive)
       shell: bash
       env:
