@@ -38,7 +38,9 @@ def verify_edit_stream(raw: str, target_path: str) -> dict:
                         errors = True
                         continue
                     # Neither relative path traversal nor another file is acceptable.
-                    if Path(path).resolve() != target:
+                    requested = Path(path)
+                    actual_path = requested.resolve() if requested.is_absolute() else (target.parent / requested).resolve()
+                    if actual_path != target:
                         errors = True
                     if name == "Edit":
                         if not isinstance(args.get("old_string"), str) or not isinstance(args.get("new_string"), str):
