@@ -175,7 +175,7 @@ def image_contain(c,img_path,x,y,w,h):
 
 def product(c,p,x,y,image_w=236,image_h=195):
     image_contain(c,p["image"],x,y+50,image_w,image_h)
-    lines=fitline(p["title"].capitalize(),image_w,12.4 and "bold",12.0)
+    lines=fitline(p["title"],image_w,"bold",12.0)
     for j,s in enumerate(lines):
         txt(c,x,y+27-j*15,s,12.0,"#141414","bold")
     txt(c,x,y-6-pow(max(0,len(lines)-1),1)*15,p["sku"],9.3,"#777777","regular")
@@ -209,8 +209,8 @@ def page(c,items,page_no,count,tone):
             "PIEZAS DE DISTINTOS COLORES" if tone=="color" else
             "MATES, ASADO Y ACCESORIOS"),9.8,"#656565","regular")
     c.setStrokeColorRGB(.90,.90,.90);c.line(M,H-158,W-M,H-158)
-    if len(items)>0:product(c,items[0],M,447,image_w=232,image_h=194)
-    if len(items)>1:product(c,items[1],312,432,image_w=237,image_h=207)
+    if len(items)>0:product(c,items[0],M,447,image_w=232,image_h=177)
+    if len(items)>1:product(c,items[1],312,432,image_w=237,image_h=190)
     if len(items)>2:product(c,items[2],M,167,image_w=232,image_h=194)
     if len(items)>3:product(c,items[3],312,152,image_w=237,image_h=207)
     c.setStrokeColorRGB(.85,.85,.85);c.line(M,67,W-M,67)
