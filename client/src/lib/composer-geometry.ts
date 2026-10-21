@@ -18,6 +18,14 @@ export const COMPOSER_GROWN_PX = 44
 /** Textarea height cap, px. */
 export const COMPOSER_MAX_HEIGHT_PX = 160
 
+/** On a narrow phone, omit optional keyboard hints that wrap and are clipped
+ * by the single-line, overflow-hidden textarea. Preserve non-parenthetical
+ * placeholders, which may come from a locale without a separate hint. */
+export function compactComposerPlaceholder(placeholder: string): string {
+  const short = placeholder.split(/\s*[(（]/, 1)[0].trim()
+  return short || placeholder
+}
+
 /** Whether the composer has anything to send. */
 export function composerHasContent(text: string, attachmentCount: number): boolean {
   return text.trim().length > 0 || attachmentCount > 0

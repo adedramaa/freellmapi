@@ -11,6 +11,7 @@ import {
   COMPOSER_CORNER_PX,
   COMPOSER_EDGE,
   composerHeight,
+  compactComposerPlaceholder,
   sendButtonInteractive,
   sendButtonOffset,
 } from '@/lib/composer-geometry'
@@ -57,6 +58,15 @@ export function LiquidComposer({
   // Set from input events; an empty value never counts as grown, so a
   // programmatic clear (send, new chat) drops back to one line by itself.
   const [grownByInput, setGrown] = useState(false)
+  const [mobile, setMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const onChange = (e: MediaQueryListEvent) => setMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
   const grown = grownByInput && value !== ''
   const [dictationPhase, setDictationPhase] = useState<DictationPhase>('idle')
   const [micStream, setMicStream] = useState<MediaStream | null>(null)
@@ -152,7 +162,7 @@ export function LiquidComposer({
             onChange={e => onChange(e.target.value)}
             onKeyDown={onKeyDown}
             onPaste={onPaste}
-            placeholder={placeholder}
+            placeholder={mobile ? compactComposerPlaceholder(placeholder) : placeholder}
             rows={1}
             className={`block min-h-[32px] w-full resize-none bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground transition-opacity ${recording ? 'opacity-0' : ''}`}
             style={{ height: 'auto', overflow: 'hidden' }}
