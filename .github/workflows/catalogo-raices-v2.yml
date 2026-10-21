@@ -51,19 +51,21 @@ jobs:
           CANVAS_SKILL=$(grep '/skills/canvas-design/SKILL.md' "$RUNNER_TEMP/raices-skills.txt" | head -1 || true)
           FRONT_SKILL=$(grep '/skills/frontend-design/SKILL.md' "$RUNNER_TEMP/raices-skills.txt" | head -1 || true)
           test -n "$PDF_SKILL" && test -n "$CANVAS_SKILL" && test -n "$FRONT_SKILL"
+          {
+            echo '# Extracts from installed official Anthropic skills'
+            sed -n '1,32p' "$PDF_SKILL"
+            sed -n '1,32p' "$CANVAS_SKILL"
+            sed -n '1,32p' "$FRONT_SKILL"
+            sed -n '1,32p' "$GITHUB_WORKSPACE/.claude/skills/catalogo-editorial-raices/SKILL.md"
+          } > "$RUNNER_TEMP/raices-skill-excerpts.md"
           cat > "$RUNNER_TEMP/raices-prompt.txt" <<EOF
-          Use Read to inspect these skill instruction documents:
-          $PDF_SKILL
-          $CANVAS_SKILL
-          $FRONT_SKILL
-          $GITHUB_WORKSPACE/.claude/skills/catalogo-editorial-raices/SKILL.md
-          Then Read $GITHUB_WORKSPACE/catalogo/raices/editorial.py and $GITHUB_WORKSPACE/catalogo/raices/build_v2.py.
-          Apply the principles: authentic photos, editorial hierarchy, clean white background, ample whitespace, no prices.
-          Use Edit to improve ONLY the COVER_SUBTITLE value in editorial.py, to a short elegant Spanish phrase (4-8 words). Preserve syntax and everything else.
-          Do not edit or create other files. Do not use Bash or Write.
+          Use Read on $RUNNER_TEMP/raices-skill-excerpts.md and $GITHUB_WORKSPACE/catalogo/raices/editorial.py.
+          Based on the installed PDF, canvas-design, frontend-design and custom Raíces skill guidance, use Edit to replace ONLY COVER_SUBTITLE in editorial.py with:
+          COVER_SUBTITLE = "Objetos que acompañan nuestros rituales cotidianos."
+          No other changes. Do not use any tools except Read and Edit. Finish as soon as the edit succeeds.
           EOF
-          timeout 155 claude --bare -p "$(cat "$RUNNER_TEMP/raices-prompt.txt")" \
-            --model "$ANTHROPIC_MODEL" --max-turns 10 \
+          timeout 125 claude --bare -p "$(cat "$RUNNER_TEMP/raices-prompt.txt")" \
+            --model "$ANTHROPIC_MODEL" --max-turns 5 \
             --tools "Read,Edit" --allowedTools Read Edit \
             --permission-mode dontAsk --strict-mcp-config \
             --disable-slash-commands --no-session-persistence \
