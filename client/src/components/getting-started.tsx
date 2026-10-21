@@ -66,7 +66,7 @@ export function GettingStarted() {
   }
 
   return (
-    <section className="rounded-3xl border bg-card p-4 sm:p-5">
+    <section className="rounded-3xl border bg-card p-4 sm:p-5" aria-label={t('setup.title')}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold">{t('setup.title')}</h2>
