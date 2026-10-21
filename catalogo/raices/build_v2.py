@@ -180,8 +180,8 @@ def product(c,p,x,y,image_w=236,image_h=180):
     for j,s in enumerate(lines):
         txt(c,x,y-22-j*15,s,11.8,"#111111","bold")
     txt(c,x,y-31-len(lines)*15,p["sku"],9.5,"#777777","regular")
-    txt(c,x,y-49-len(lines)*15,p["category"].upper(),7.4,"#929292","regular")
-    c.linkURL(p["url"],(x,y-62-len(lines)*15,x+image_w,y+image_h),relative=0,thickness=0)
+    # The section header already states the category; avoid redundant cramped labels.
+    c.linkURL(p["url"],(x,y-36-len(lines)*15,x+image_w,y+image_h),relative=0,thickness=0)
 
 def cover(c,first,second,count):
     c.setFillColorRGB(1,1,1);c.rect(0,0,W,H,fill=1,stroke=0)
@@ -228,8 +228,8 @@ def page(c,items,page_no,count,tone):
     c.setStrokeColorRGB(.90,.90,.90);c.line(M,H-194,W-M,H-194)
     if len(items)>0:product(c,items[0],M,415,image_w=234,image_h=181)
     if len(items)>1:product(c,items[1],309,415,image_w=237,image_h=181)
-    if len(items)>2:product(c,items[2],M,155,image_w=234,image_h=181)
-    if len(items)>3:product(c,items[3],309,155,image_w=237,image_h=181)
+    if len(items)>2:product(c,items[2],M,135,image_w=234,image_h=181)
+    if len(items)>3:product(c,items[3],309,135,image_w=237,image_h=181)
     c.setStrokeColorRGB(.85,.85,.85);c.setLineWidth(.55);c.line(M,39,W-M,39)
     txt(c,M,23,"RAÍCES REGALOS   ·   CATÁLOGO SIN PRECIOS",8,"#757575")
     txt(c,W-88,23,"%02d / %02d"%(page_no,1+(count+3)//4),8.5,"#757575","bold")
