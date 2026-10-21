@@ -24,7 +24,7 @@ jobs:
           from pathlib import Path
           p=Path('.github/skill-staging/raices-payload.b64')
           compressed=base64.b64decode(p.read_text().strip(),validate=True)
-          assert hashlib.sha256(compressed).hexdigest()=='30e2df98231a26d2028a9bd8d28592b50823da58c4db4b6e7b9d4256fca9e52c'
+          assert hashlib.sha256(compressed).hexdigest()=='ac514fc783bf7704f56c9c43578aa3f566b29ec247ed2704d2c244837d559cbd'
           raw=lzma.decompress(compressed)
           prefix='.claude/skills/catalogo-editorial-raices/'
           expected={'SKILL.md','assets/catalogo.css','references/DISENO_EDITORIAL.md',
@@ -38,10 +38,10 @@ jobs:
             size=int.from_bytes(raw[pos:pos+4],'big');pos+=4
             payload=raw[pos:pos+size];pos+=size
             assert 0<size<150000 and name not in seen
-            assert name=='README_INSTALACION_ANDROID.md' or name.startswith(prefix) and name[len(prefix):] in expected
+            assert name.startswith(prefix) and name[len(prefix):] in expected
             seen.add(name)
             f=Path(name);f.parent.mkdir(parents=True,exist_ok=True);f.write_bytes(payload)
-          assert seen=={prefix+n for n in expected}|{'README_INSTALACION_ANDROID.md'}
+          assert seen=={prefix+n for n in expected}
           f=Path(prefix+'SKILL.md')
           assert f.read_text(encoding='utf-8').startswith('---\nname: catalogo-editorial-raices\n')
           for file in Path(prefix+'scripts').glob('*.py'):ast.parse(file.read_text(encoding='utf-8'))
@@ -87,7 +87,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- .claude/skills/catalogo-editorial-raices CLAUDE.md README_INSTALACION_ANDROID.md
-          git rm -f -- .github/skill-staging/raices-payload.b64
+          git rm -f -- .github/skill-staging/raices-payload.b64 .github/skill-staging/part1.txt
           git diff --cached --check
           git commit -m "feat(claude): install Raices skill and mandatory catalog QA policy"
           git push origin HEAD:main
