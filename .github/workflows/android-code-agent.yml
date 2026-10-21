@@ -14,12 +14,12 @@ on:
       file:
         description: "Existing file to edit in client/src or docs (max 12 KB)"
         type: string
-        default: "docs/en/api/01-rest-api.md"
+        default: "client/src/components/getting-started.tsx"
         required: true
       task:
         description: "One specific request (public in GitHub workflow history; no secrets)"
         type: string
-        default: "Improve the clarity of one short paragraph without changing its meaning."
+        default: "Improve the readability of the first-steps card on a phone without changing its behavior."
         required: true
       model:
         description: "Available FreeLLMAPI model"
