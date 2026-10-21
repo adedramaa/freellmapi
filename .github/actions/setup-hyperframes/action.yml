@@ -1,0 +1,32 @@
+name: Setup HyperFrames skill for Claude Code
+description: Install the official HyperFrames router skill into this ephemeral GitHub Actions checkout.
+runs:
+  using: composite
+  steps:
+    - name: Use Node.js 22 for HyperFrames
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+      with:
+        node-version: '22'
+    - name: Install HyperFrames skill (Claude Code only, noninteractive)
+      shell: bash
+      env:
+        DISABLE_TELEMETRY: '1'
+        HYPERFRAMES_NO_TELEMETRY: '1'
+        GIT_TERMINAL_PROMPT: '0'
+        CI: 'true'
+      run: |
+        set -euo pipefail
+        # Equivalent to the user's "npx skills add heygen-com/hyperframes"
+        # with explicit non-interactive selection of ONLY the core router skill.
+        npx --yes skills add heygen-com/hyperframes \
+          --skill hyperframes \
+          --agent claude-code \
+          --yes
+        SKILL="$GITHUB_WORKSPACE/.claude/skills/hyperframes/SKILL.md"
+        if [[ ! -s "$SKILL" ]]; then
+          echo "HyperFrames router skill is missing from Claude Code's project skill path."
+          exit 1
+        fi
+        echo "HyperFrames router skill installed for this GitHub Actions job."
+        echo "Skill location: .claude/skills/hyperframes/SKILL.md"
+        # GitHub-hosted runners are ephemeral. Another run must call this setup action again.
