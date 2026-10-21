@@ -1,0 +1,70 @@
+name: Claude Code - Anthropic Catalog Skills Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/anthropic-skills-install-verify.yml'
+      - '.claude/settings.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anthropic-skills-install-verify
+  cancel-in-progress: false
+
+jobs:
+  verify-official-skills:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out project without write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify only the two approved official plugins are enabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          with open(".claude/settings.json", encoding="utf-8") as f:
+              settings = json.load(f)
+          assert settings["extraKnownMarketplaces"]["anthropic-agent-skills"]["source"] == {
+              "source": "github", "repo": "anthropics/skills"
+          }
+          plugins = settings["enabledPlugins"]
+          assert plugins["document-skills@anthropic-agent-skills"] is True
+          assert plugins["example-skills@anthropic-agent-skills"] is True
+          print("PASS: official marketplace and both project plugins are enabled.")
+          PY
+
+      - name: Install official Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+      - name: Install official skills plugins in the runner
+        shell: bash
+        env:
+          DISABLE_TELEMETRY: '1'
+        run: |
+          set -euo pipefail
+          claude --version
+          claude plugin marketplace add anthropics/skills
+          claude plugin install document-skills@anthropic-agent-skills --scope project
+          claude plugin install example-skills@anthropic-agent-skills --scope project
+          claude plugin list | tee "$RUNNER_TEMP/claude-plugin-list.txt"
+          grep -F 'document-skills@anthropic-agent-skills' "$RUNNER_TEMP/claude-plugin-list.txt"
+          grep -F 'example-skills@anthropic-agent-skills' "$RUNNER_TEMP/claude-plugin-list.txt"
+          echo 'PASS: both Anthropic skills collections installed in this ephemeral CI runner.'
+
+      - name: Ensure verification did not modify committed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only -- . ':!.claude/settings.json' > "$RUNNER_TEMP/other-diff.txt"
+          test ! -s "$RUNNER_TEMP/other-diff.txt"
+          echo 'PASS: no tracked source files changed.'
