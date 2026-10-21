@@ -1,0 +1,93 @@
+name: Install Raices Catalog Skill
+on:
+  push:
+    branches: [main]
+    paths: ['.github/skill-staging/raices-payload.b64']
+permissions:
+  contents: write
+jobs:
+  install:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: true
+      - name: Extract exact ZIP payload, check structure and scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,lzma,hashlib,ast,subprocess
+          from pathlib import Path
+          p=Path('.github/skill-staging/raices-payload.b64')
+          compressed=base64.b64decode(p.read_text().strip(),validate=True)
+          assert hashlib.sha256(compressed).hexdigest()=='30e2df98231a26d2028a9bd8d28592b50823da58c4db4b6e7b9d4256fca9e52c'
+          raw=lzma.decompress(compressed)
+          prefix='.claude/skills/catalogo-editorial-raices/'
+          expected={'SKILL.md','assets/catalogo.css','references/DISENO_EDITORIAL.md',
+                    'references/CONTROL_CALIDAD.md','references/CONTRATO_DATOS.md',
+                    'scripts/auditar_pdf.py','scripts/validar_catalogo.py',
+                    'scripts/construir_catalogo.py','scripts/exportar_pdf.cjs'}
+          pos=0;seen=set()
+          while pos<len(raw):
+            n=int.from_bytes(raw[pos:pos+2],'big');pos+=2
+            name=raw[pos:pos+n].decode('utf-8');pos+=n
+            size=int.from_bytes(raw[pos:pos+4],'big');pos+=4
+            payload=raw[pos:pos+size];pos+=size
+            assert 0<size<150000 and name not in seen
+            assert name=='README_INSTALACION_ANDROID.md' or name.startswith(prefix) and name[len(prefix):] in expected
+            seen.add(name)
+            f=Path(name);f.parent.mkdir(parents=True,exist_ok=True);f.write_bytes(payload)
+          assert seen=={prefix+n for n in expected}|{'README_INSTALACION_ANDROID.md'}
+          f=Path(prefix+'SKILL.md')
+          assert f.read_text(encoding='utf-8').startswith('---\nname: catalogo-editorial-raices\n')
+          for file in Path(prefix+'scripts').glob('*.py'):ast.parse(file.read_text(encoding='utf-8'))
+          subprocess.run(['node','--check',prefix+'scripts/exportar_pdf.cjs'],check=True)
+          print('PASS: exact ZIP files installed, valid skill frontmatter, script syntax')
+          PY
+      - name: Set persistent catalog rules for Claude Code
+        shell: bash
+        run: |
+          cat > CLAUDE.md <<'EOF'
+          # Reglas persistentes de Claude Code
+
+          ## Catálogos Raíces Regalos — protocolo obligatorio
+          Ante cualquier catálogo, dossier o PDF comercial de productos de Raíces:
+          1. Leer y aplicar .claude/skills/catalogo-editorial-raices/SKILL.md y sus referencias.
+             Es obligatorio incluso si el prompt no menciona la skill por nombre.
+          2. Combinar, si están disponibles, las skills oficiales pdf, canvas-design y frontend-design.
+          3. Usar solo fotos reales autorizadas y SKU, títulos y fuentes verificables.
+             Nunca inventar productos, conjuntos, variantes, precios ni grabados.
+          4. Para un catálogo SIN PRECIOS, omitir precios por completo y validar SKU/foto/fuente
+             sin exigir datos de precio. El validador completo de precios se aplica a catálogos con precios.
+          5. Realizar prueba editorial, renderizar e inspeccionar todas las páginas, auditar datos,
+             mostrar vista previa y pedir aprobación final.
+          6. NO reemplazar ni publicar el catálogo actual; NO enviarlo por email, WhatsApp ni
+             actualizar sistemas o tiendas sin autorización explícita posterior del usuario.
+          7. Mantener costo adicional cero; no exigir una PC. Trabajar en entornos autorizados.
+          EOF
+      - name: Check Python, Playwright/Chromium and PyMuPDF dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/raices-python"
+          source "$RUNNER_TEMP/raices-python/bin/activate"
+          python -m pip install --quiet pymupdf pillow
+          python -c "import fitz;from PIL import Image;print('PyMuPDF/Pillow OK')"
+          npm install --prefix "$RUNNER_TEMP/raices-node" --no-audit --no-fund playwright@1.57.0
+          node "$RUNNER_TEMP/raices-node/node_modules/playwright/cli.js" install chromium
+          NODE_PATH="$RUNNER_TEMP/raices-node/node_modules" node -e "require('playwright').chromium.launch({headless:true}).then(async b=>{console.log('Chromium OK');await b.close()}).catch(e=>{console.error(e);process.exit(1)})"
+      - name: Commit installed skill and mandatory rule only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- .claude/skills/catalogo-editorial-raices CLAUDE.md README_INSTALACION_ANDROID.md
+          git rm -f -- .github/skill-staging/raices-payload.b64
+          git diff --cached --check
+          git commit -m "feat(claude): install Raices skill and mandatory catalog QA policy"
+          git push origin HEAD:main
