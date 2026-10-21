@@ -212,10 +212,18 @@ def page(c,items,page_no,count,tone):
     txt(c,M,H-105,"SELECCIÓN  /  %02d"%(page_no-1),9.5,"#6E6E6E","bold")
     dark=sum(1 for p in items if p["tone"]=="dark")
     color=sum(1 for p in items if p["tone"]=="color")
-    title="COLOR Y CARÁCTER" if color>=2 else "LOS ESENCIALES" if dark>=2 else "NUESTRA SELECCIÓN"
-    txt(c,M,H-153,title,29,"#141414","bold")
     cats=list(dict.fromkeys(p["category"] for p in items))
-    subtitle=(" / ".join(cats[:3]) if len(cats)>1 else cats[0]) if cats else "Raíces Regalos"
+    counts={category:sum(p["category"]==category for p in items) for category in cats}
+    primary=max(cats,key=lambda cat:counts[cat]) if cats else "Mates"
+    groups={"Mates":"MATES","Sets de mate":"SETS DE MATE",
+            "Asado":"PARA EL ASADO","Bolsos":"BOLSOS Y MOCHILAS",
+            "Accesorios":"ACCESORIOS","Cuchillos":"CUCHILLOS",
+            "Bombillas":"BOMBILLAS"}
+    title=("COLOR Y CARÁCTER" if color>=2 and len(cats)>1 else
+           groups.get(primary,"NUESTRA SELECCIÓN") if counts.get(primary,0)>=2
+           else "NUESTRA SELECCIÓN")
+    txt(c,M,H-153,title,29,"#141414","bold")
+    subtitle=(" / ".join(cats[:3]) if len(cats)>1 else "SELECCIÓN RAÍCES 2026")
     txt(c,M,H-179,subtitle.upper(),9.2,"#686868","regular")
     c.setStrokeColorRGB(.90,.90,.90);c.line(M,H-194,W-M,H-194)
     if len(items)>0:product(c,items[0],M,415,image_w=234,image_h=181)
