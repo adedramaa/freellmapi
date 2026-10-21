@@ -1,3 +1,4 @@
 Nueva edición editorial Raíces Regalos 2026. Ejecución autorizada por usuario desde ChatGPT con Claude Code + skills oficiales PDF/canvas/frontend. Sin precios, solo fotografías verificadas, revisión previa.
 Segunda pasada editorial: Claude Code lee un resumen de las skills oficiales y corrige únicamente el subtítulo de portada; el generador y la auditoría permanecen restringidos.
 Edición definitiva: secciones por categorías reales verificadas, evitando repetir títulos genéricos en las 24 páginas de productos.
+Control final de composición: eliminar rótulos de categoría duplicados bajo cada producto y dejar más aire entre las dos filas; conservar 96 SKU reales y precios ausentes.
