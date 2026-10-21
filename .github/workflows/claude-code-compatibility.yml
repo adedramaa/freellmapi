@@ -1,6 +1,10 @@
 name: Claude Code - Official CLI Compatibility
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/claude-code-compatibility.yml'
   pull_request:
     branches: [main]
     paths:
@@ -25,7 +29,7 @@ concurrency:
 
 jobs:
   claude-code-compatibility:
-    if: github.repository == 'adedramaa/freellmapi' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
+    if: github.repository == 'adedramaa/freellmapi' && (github.event_name == 'pull_request' || (github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'test(claude): one-shot minimal Groq gateway probe')))))
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -38,7 +42,7 @@ jobs:
           claude --version
 
       - name: Optional gateway probe - one prompt, no tools and no code edits
-        if: github.event_name == 'workflow_dispatch' && inputs.test_mode == 'gateway_probe'
+        if: (github.event_name == 'workflow_dispatch' && inputs.test_mode == 'gateway_probe') || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'test(claude): one-shot minimal Groq gateway probe'))
         env:
           ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
           ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
@@ -46,7 +50,8 @@ jobs:
           DISABLE_TELEMETRY: "1"
           DISABLE_AUTOUPDATER: "1"
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
-          CLAUDE_CODE_MAX_OUTPUT_TOKENS: "512"
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: "256"
+          CLAUDE_CODE_SIMPLE: "1"
         shell: bash
         run: |
           set -euo pipefail
@@ -56,4 +61,11 @@ jobs:
           fi
           # No real Anthropic API credentials are set; no paid provider fallback.
           # Does NOT prove tool use; tool-use compatibility needs a later guarded test.
-          timeout 150 claude -p "Reply with only OK" --model "$ANTHROPIC_MODEL" --max-turns 1 --allowedTools "" --output-format text
+          # --allowedTools only changes permissions; it DOES NOT remove tool schemas.
+          # --tools "" does remove built-in tool schemas, reducing context under the free TPM cap.
+          # A tiny system prompt + bare mode remove unnecessary context on this diagnostic run.
+          timeout 150 claude --bare -p "Reply with only OK" \
+            --model "$ANTHROPIC_MODEL" --max-turns 1 \
+            --tools "" --disallowedTools "mcp__*" --strict-mcp-config \
+            --disable-slash-commands --system-prompt "You are a concise assistant. Reply only with OK." \
+            --output-format text
