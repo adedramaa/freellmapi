@@ -1,6 +1,6 @@
-"""Strict bridge from an owner-created GitHub issue to Claude Code draft proposals.
+"""Strict bridge from owner-authored GitHub dispatch commits to Claude Code draft PRs.
 
-Issue content is PUBLIC; never send private user data or credentials.
+Dispatch content is PUBLIC; never send private user data or credentials.
 The model job has read-only GitHub permissions; publication is a separate job.
 """
 from __future__ import annotations
@@ -25,25 +25,35 @@ MAX_RESULT_BYTES = 6_000
 
 
 def get_request(root: Path, event: dict) -> tuple[str, str, Path]:
-    """Reject any unauthorised event before touching the AI quota."""
-    issue = event.get("issue")
+    """Only an owner's single new dispatch-file push can invoke Claude Code."""
     if (
-        event.get("action") != "opened"
-        or not isinstance(issue, dict)
-        or issue.get("state") != "open"
-        or "pull_request" in issue
-        or (issue.get("user") or {}).get("login") != OWNER
+        event.get("ref") != "refs/heads/claude-requests"
+        or (event.get("sender") or {}).get("login") != OWNER
         or (event.get("repository") or {}).get("full_name") != REPOSITORY
-        or issue.get("title") != "[claude-task] ChatGPT code proposal"
     ):
-        raise ValueError("Only the owner's exact, newly opened Claude task is allowed.")
-    body = issue.get("body")
-    if not isinstance(body, str) or len(body.encode("utf-8")) > 1_500:
-        raise ValueError("Issue body must be a small JSON request.")
+        raise ValueError("Not an authorized owner request.")
+    commit = event.get("head_commit")
+    commits = event.get("commits")
+    if not isinstance(commit, dict) or not isinstance(commits, list) or len(commits) != 1:
+        raise ValueError("Expected exactly one new dispatch commit.")
+    added, modified, removed = commit.get("added"), commit.get("modified"), commit.get("removed")
+    if not isinstance(added, list) or len(added) != 1 or modified or removed:
+        raise ValueError("One new request file, no other changes, is required.")
+    request_path = added[0]
+    if not isinstance(request_path, str) or not re.fullmatch(
+        r"\.claude-requests/task-[0-9]{8}-[a-z0-9-]{1,50}\.json", request_path
+    ):
+        raise ValueError("Invalid dispatch filename.")
+    message = commit.get("message")
+    if not isinstance(message, str) or not message.startswith("claude-task: "):
+        raise ValueError("Request must use the exact claude-task commit prefix.")
+    body = message[len("claude-task: "):]
+    if len(body.encode("utf-8")) > 1_500:
+        raise ValueError("Request metadata is too long.")
     try:
         spec = json.loads(body)
     except json.JSONDecodeError as exc:
-        raise ValueError("Issue body must be a JSON object.") from exc
+        raise ValueError("Request commit must contain valid JSON.") from exc
     if type(spec) is not dict or set(spec) != {"file", "task"}:
         raise ValueError("JSON must contain exactly file and task.")
     rel, task = spec["file"], spec["task"]
@@ -54,7 +64,7 @@ def get_request(root: Path, event: dict) -> tuple[str, str, Path]:
     if any(ord(c) < 32 or ord(c) == 127 for c in task):
         raise ValueError("Task must contain one line of ordinary text.")
     path = validate_path(root, rel)
-    if path.is_symlink() or path.stat().st_size > MAX_FILE_BYTES:
+    if root.joinpath(rel).is_symlink() or path.stat().st_size > MAX_FILE_BYTES:
         raise ValueError("File must be a small, regular source file.")
     return rel, task, path
 
@@ -154,8 +164,8 @@ def verify_checkout(root: Path, expected: str) -> None:
 def run() -> None:
     if os.environ.get("GITHUB_REPOSITORY") != REPOSITORY:
         raise ValueError("Wrong GitHub repository.")
-    if os.environ.get("GITHUB_EVENT_NAME") != "issues" or os.environ.get("GITHUB_REF") != "refs/heads/main":
-        raise ValueError("Only opening an issue on main is supported.")
+    if os.environ.get("GITHUB_EVENT_NAME") != "push" or os.environ.get("GITHUB_REF") != "refs/heads/claude-requests":
+        raise ValueError("Only new owner task commits on the dispatch branch are supported.")
     root = Path.cwd().resolve(strict=True)
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
     rel, task, file = get_request(root, event)
