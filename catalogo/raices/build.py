@@ -110,13 +110,13 @@ def fetch_product(item):
         im.load()
         if min(im.size)<280: return None
         if im.mode not in ("RGB","RGBA"): im=im.convert("RGB")
-        im.thumbnail((1100,1100),Image.Resampling.LANCZOS)
+        im.thumbnail((960,960),Image.Resampling.LANCZOS)
         path=CACHE/(hashlib.sha256(data).hexdigest()[:24]+".jpg")
         if not path.exists():
             rgb=Image.new("RGB",im.size,"white")
             if im.mode=="RGBA": rgb.paste(im,mask=im.getchannel("A"))
             else: rgb.paste(im)
-            rgb.save(path,format="JPEG",quality=92,subsampling=0)
+            rgb.save(path,format="JPEG",quality=87,subsampling=0)
         pix=im.convert("RGB").resize((72,72)).getdata()
         nonwhite=[]; colorful=0; earthy=0; dark=0
         for rr,gg,bb in pix:
@@ -171,7 +171,7 @@ def image_contain(c,img_path,x,y,w,h):
     iw,ih=im.size
     scale=min(w/iw,h/ih)
     aw,ah=iw*scale,ih*scale
-    c.drawImage(ImageReader(im),x+(w-aw)/2,y+(h-ah)/2,aw,ah,mask="auto")
+    c.drawImage(str(img_path),x+(w-aw)/2,y+(h-ah)/2,aw,ah,mask="auto")
 
 def product(c,p,x,y,image_w=236,image_h=195):
     image_contain(c,p["image"],x,y+50,image_w,image_h)
