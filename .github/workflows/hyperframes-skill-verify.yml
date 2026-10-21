@@ -1,0 +1,56 @@
+name: Claude Code - HyperFrames Skill Installation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/actions/setup-hyperframes/action.yml'
+      - '.github/workflows/hyperframes-skill-verify.yml'
+      - 'docs/HYPERFRAMES_CLAUDE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hyperframes-skill-install
+  cancel-in-progress: false
+
+jobs:
+  install-skill:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout only authorized repository content
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install official HyperFrames router via skills CLI
+        uses: ./.github/actions/setup-hyperframes
+
+      - name: Verify Node.js and FFmpeg are available for future video jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          ffmpeg -version | head -1
+          test -s .claude/skills/hyperframes/SKILL.md
+          echo "HyperFrames skill installation VERIFIED for this runner."
+
+      - name: Confirm no tracked source files were changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- .
+          git diff --cached --exit-code -- .
+          echo "Skill installation changed no tracked project files."
+
+      - name: Verify official Claude Code CLI starts (no model calls)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code@2.1.296
+          claude --version
+          echo "Claude Code CLI verified. Skill invocation/video render not yet tested."
