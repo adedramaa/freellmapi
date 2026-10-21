@@ -1,0 +1,166 @@
+name: ChatGPT to Claude Code - Authorized Task Branch
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/chat-claude-bridge.yml'
+      - '.github/agent/claude_issue_bridge.py'
+      - '.github/agent/test_claude_issue_bridge.py'
+  push:
+    branches: [claude-requests]
+    paths:
+      - '.claude-requests/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-chat-bridge
+  cancel-in-progress: false
+
+jobs:
+  safety-tests:
+    if: >-
+      github.repository == 'adedramaa/freellmapi' &&
+      (github.event_name == 'pull_request' ||
+      (github.event_name == 'push' &&
+       github.ref == 'refs/heads/claude-requests' &&
+       startsWith(github.event.head_commit.message, 'claude-task: ')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Check out reviewed code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event_name == 'push' && 'main' || github.ref }}
+          persist-credentials: false
+      - name: Verify all bridge protections offline
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -m unittest discover -s .github/agent -p test_claude_issue_bridge.py -v
+
+  generate:
+    if: >-
+      github.repository == 'adedramaa/freellmapi' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/claude-requests' &&
+      startsWith(github.event.head_commit.message, 'claude-task: ')
+    needs: [safety-tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    permissions:
+      contents: read
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out trusted main without GitHub write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Validate authorized task commit and exact file scope
+        id: selection
+        run: python3 .github/agent/claude_issue_bridge.py prepare
+      - name: Install real Claude Code official CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Run Claude Code with only Read and Edit
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '384'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ANTHROPIC_AUTH_TOKEN" ]]; then
+            echo "Missing the unified FreeLLMAPI key."
+            exit 1
+          fi
+          echo "Claude Code is reviewing one public, owner-approved repository file."
+          if ! timeout 155 claude --bare \
+            -p "$(cat "$RUNNER_TEMP/claude-chat-prompt.txt")" \
+            --model "$ANTHROPIC_MODEL" --max-turns 5 \
+            --tools "Read,Edit" --allowedTools Read Edit \
+            --permission-mode dontAsk --strict-mcp-config \
+            --disable-slash-commands --no-session-persistence \
+            --system-prompt "Make one minimal code edit using Read then Edit on the selected public file only. Never use other tools." \
+            --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/claude-chat-stream.jsonl" \
+            2> "$RUNNER_TEMP/claude-chat-error.log"; then
+            echo "Claude Code could not complete the constrained request; no changes published."
+            exit 1
+          fi
+      - name: Verify actual tools and safe diff before any publication
+        run: python3 .github/agent/claude_issue_bridge.py audit
+      - name: Transfer ONLY the validated file, never tokens or logs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: claude-chat-file-${{ github.run_id }}
+          path: ${{ runner.temp }}/claude-chat-output/
+          retention-days: 1
+          if-no-files-found: error
+
+  publish-draft:
+    if: >-
+      github.repository == 'adedramaa/freellmapi' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/claude-requests'
+    needs: [generate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout reviewed main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Download approved source only
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: claude-chat-file-${{ github.run_id }}
+          path: ${{ runner.temp }}/claude-downloaded-file/
+      - name: Revalidate request, artifact scope and edit against main
+        env:
+          PROPOSAL_DIR: ${{ runner.temp }}/claude-downloaded-file
+        run: python3 .github/agent/claude_issue_bridge.py stage
+      - name: Open review-only PR and link it to the request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_ID: ${{ github.run_id }}
+          TASK_COMMIT: ${{ github.sha }}
+          PR_BRANCH: claude/chat-${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$PR_BRANCH"
+          git add -u
+          git commit -m "claude: propose one-file change for review (task $REQUEST_ID)"
+          git push origin "$PR_BRANCH"
+          {
+            echo "## Claude Code REAL via ChatGPT / FreeLLMAPI"
+            echo
+            echo "Requested from ChatGPT via the dedicated task branch. Task run: $REQUEST_ID."
+            echo "Task commit: $TASK_COMMIT"
+            echo
+            echo "Claude Code Read/Edit changes were audited before publishing."
+            echo "Human review and CI checks are required. Do not merge automatically."
+            echo "Render Auto-Deploy stays disabled; publication requires separate approval."
+          } > "$RUNNER_TEMP/claude-chat-pr.md"
+          PR_URL="$(gh pr create --repo "$GITHUB_REPOSITORY" \
+            --head "$PR_BRANCH" --base main --draft \
+            --title "claude: review ChatGPT request $REQUEST_ID" \
+            --body-file "$RUNNER_TEMP/claude-chat-pr.md")"
+          printf 'Draft PR created: %s\n' "$PR_URL"
