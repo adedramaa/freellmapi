@@ -24,24 +24,26 @@ def episode_from_story(base:dict,story:dict,request:dict):
     if len(lines)!=12 or not all(isinstance(v,str) and 8<=len(v)<=85 and len(v.split())<=8 for v in lines):
         raise ValueError("Misterio exige exactamente 12 frases de maximo 8 palabras")
     data=copy.deepcopy(base)
-    data.update({"slug":"misterio-piloto","title":story.get("title","La llamada de mañana"),
+    part=request["episode"]
+    if type(part) is not int or not 1<=part<=6: raise ValueError("Episodios 1 a 6")
+    data.update({"slug":f"misterio-ep{part:02d}","title":story.get("title","La llamada de mañana"),
        "premise":"Vera recibe una llamada del numero de su hermano desaparecido. Investigacion de suspense.",
-       "tone":"serie","series":{"name":story.get("series","EL ARCHIVO DE LAS 03:17"),"part":1},
+       "tone":"serie","series":{"name":story.get("series","EL ARCHIVO DE LAS 03:17"),"part":part,"of":6},
        "set":"escritorio_noche","hook":"LA LLAMADA DE LAS 03:17","music":None,
        "loop_hint":"Quien envio la fotografia y que significa el cajon?",
        "alt_hooks":["Su hermano desapareció. Su teléfono volvió a sonar.","La llamada provenía de alguien desaparecido."],
-       "characters":["humano","cosa"]})
+       "characters":["humano","voz_sola"],"reparto":{"humano":"chica"}})
     # A 3D human tells the thriller. The object acts as a silent clue, not a comedy character.
     template=next(b for b in base["beats"] if b["line"])
     cameras=("closeup_novato","over_shoulder","closeup_novato","two_shot",
              "medium_novato_low","closeup_novato","over_shoulder","closeup_novato",
              "wide_room","closeup_novato","two_shot","closeup_novato")
-    actions=("idle","look_phone","lean_in","idle","look_phone","recoil",
-             "lean_in","idle","recoil","lean_in","recoil","recoil")
+    actions=("idle","look_phone","idle","idle","look_phone","slump",
+             "idle","idle","slump","idle","slump","idle")
     shots=[]
     for idx,line in enumerate(lines):
         b=copy.deepcopy(template)
-        b.update({"id":idx+1,"speaker":"humano","line":line,"camera":cameras[idx],
+        b.update({"id":idx+1,"speaker":"voz_sola","line":line,"camera":cameras[idx],
           "action":actions[idx],
           "emotion":"alarma" if idx in (3,5,10,11) else "confuso",
           "listener_emotion":"neutral","event":None,"sfx":[],
@@ -53,6 +55,19 @@ def episode_from_story(base:dict,story:dict,request:dict):
         else:
             b["light"]=None
             b["ambience"]=None
+        # Narrative evidence appears in-world on the actor's phone/laptop.
+        if idx==1:
+            b["camera"]="phone_screen"
+            b["event"]={"type":"screen","component":"PhoneCall",
+                         "props":{"contact":"Julián" if part==1 else "Número oculto",
+                                  "connect_after":None}}
+        if idx==8:
+            b["camera"]="screen_closeup"
+            b["event"]={"type":"screen","component":"SystemNotice",
+                         "props":{"title":"ARCHIVO 47A" if part>1 else "MENSAJE 03:17",
+                                  "text":"Última conexión registrada"}}
+        if idx==10:
+            b["light"]="apagon"
         shots.append(b)
     silent=copy.deepcopy(base["beats"][-1])
     silent.update({"id":len(shots)+1,"speaker":None,"line":None,
@@ -119,13 +134,11 @@ def main():
     switch="scene.cycles.use_denoising = False"
     if switch not in source:raise RuntimeError("Version del renderer no soportada")
     renderer.write_text(source.replace(switch,"scene.cycles.use_denoising = True"),encoding="utf-8")
-    # A cinematic animatic uses REAL Blender 3D keyframes, not full per-frame animation.
-    # Free CPU rendering is substantially lighter for a narrated mystery series.
     final=engine.animatic(episode.slug,audio_only=False)
     result=Path(os.environ.get("GITHUB_WORKSPACE",Path.cwd()))/"fabrica_free"/"mystery_output"
     result.mkdir(parents=True,exist_ok=True)
-    shutil.copy2(final,result/"misterio_storyboard_ep01.mp4")
+    shutil.copy2(final,result/f"misterio_storyboard_ep{part:02d}.mp4")
     shutil.copy2(directory/"script.json",result/"3d_scene_script.json")
-    print("MISTERIO_MP4="+str(result/"misterio_storyboard_ep01.mp4"),flush=True)
+    print("MISTERIO_MP4="+str(result/f"misterio_ep{part:02d}.mp4"),flush=True)
 
 if __name__=="__main__": main()
