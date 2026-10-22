@@ -48,8 +48,8 @@ BIBLE={
 }
 def parse_story(value:str, length:int=12):
  dec=json.JSONDecoder()
- for match in re.finditer(r"\\{",value):
-  try: obj,_=dec.raw_decode(value[match.start():])
+ for start in (i for i,ch in enumerate(value) if ch == '{'):
+  try: obj,_=dec.raw_decode(value[start:])
   except ValueError: continue
   if not isinstance(obj,dict): continue
   lines=obj.get("lines")
