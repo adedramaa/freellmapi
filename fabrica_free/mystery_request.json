@@ -1,9 +1,9 @@
 {
   "genre": "misterio",
   "series": "EL ARCHIVO DE LAS 03:17",
-  "topic": "Vera recibe una llamada del numero de Julian, su hermano desaparecido hace seis anos; encuentra una fotografia que parece haber sido tomada manana.",
-  "episode": 1,
+  "topic": "Vera descubre en el armario un transmisor con etiqueta 47A; el aparato conecta las llamadas del numero de Julian con Archivo Norte, un lugar ligado a su desaparicion.",
+  "episode": 2,
   "agents": "1",
-  "voice": "em_alex",
+  "voice": "ef_dora",
   "quality": "humo"
 }
