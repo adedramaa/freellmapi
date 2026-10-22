@@ -1,0 +1,50 @@
+name: Fabrica - Claude Code gateway diagnosis
+on:
+  push:
+    branches: [fabrica-gratis-prototipo]
+    paths: ['.github/workflows/fabrica-planner-diagnostico.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gateway:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Install official Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Test Sonnet alias routed to free Groq gateway
+        id: test
+        continue-on-error: true
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: openai/gpt-oss-20b
+          ANTHROPIC_MODEL: sonnet
+          CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: '1'
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '200'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_TELEMETRY: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANTHROPIC_AUTH_TOKEN"
+          timeout 90 claude --bare -p 'Devuelve solamente JSON valido: {"lines":["Hola, estoy funcionando.","Ahora la voz puede cambiar."]}'             --model sonnet --max-turns 2 --tools '' --permission-mode dontAsk             --strict-mcp-config --disable-slash-commands --no-session-persistence             --output-format text > "$RUNNER_TEMP/respuesta-claude.txt"
+          python3 - "$RUNNER_TEMP/respuesta-claude.txt" <<'PY'
+          import json,sys,re
+          v=open(sys.argv[1],encoding="utf-8").read()
+          print("MODEL_OUTPUT_LENGTH",len(v))
+          m=re.search(r"\\{[\\s\\S]*\\}",v)
+          if not m: raise SystemExit("No JSON from Claude Code")
+          d=json.loads(m.group())
+          assert len(d["lines"])==2
+          print("CLAUDE_GATEWAY=success; lines=", d["lines"])
+          PY
+      - name: Report genuine Claude status
+        env:
+          OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          echo "Claude Code gateway result: $OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          test "$OUTCOME" = 'success'
