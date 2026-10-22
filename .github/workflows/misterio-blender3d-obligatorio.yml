@@ -1,0 +1,125 @@
+name: MISTERIO - Blender 3D obligatorio
+on:
+  push:
+    branches: [fabrica-gratis-prototipo]
+    paths:
+      - 'fabrica_free/blender_noir_3d.py'
+      - 'fabrica_free/subtitles_narrator3d.py'
+      - '.github/workflows/misterio-blender3d-obligatorio.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Vista previa 3D o capítulo completo'
+        required: false
+        type: choice
+        default: preview
+        options: [preview, full]
+permissions:
+  contents: read
+concurrency:
+  group: misterio-blender-real-${{ github.event.inputs.mode || 'preview' }}
+  cancel-in-progress: false
+jobs:
+  verdadero-blender-3d:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/fabrica-gratis-prototipo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Require approved narration and real Blender animation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s fabrica_free/audio/narrador_original_ep01.opus
+          python3 -m py_compile fabrica_free/blender_noir_3d.py fabrica_free/subtitles_narrator3d.py
+          if grep -Eq 'engine\.animatic|moviepy|scene_[0-9][0-9]\.jpg' fabrica_free/blender_noir_3d.py; then
+            echo "Rejected: no still-image animatic pipeline allowed" >&2
+            exit 1
+          fi
+          echo "Blender 3D and preserved narrator required" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install free Blender and FFmpeg on GitHub Actions CPU
+        shell: bash
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq blender ffmpeg fonts-dejavu-core
+          blender --version | head -1
+          ffmpeg -version | head -1
+
+      - name: Build and mechanically verify physical animated Blender set
+        env:
+          MODE: ${{ github.event.inputs.mode || 'preview' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/blender3d/frames"
+          EXTRA=""
+          if [ "$MODE" = "preview" ]; then EXTRA="--preview"; fi
+          blender -b -t 4 --python fabrica_free/blender_noir_3d.py -- \
+            --out "$RUNNER_TEMP/blender3d/noir_scene.blend" --width 432 --height 768 \
+            --fps 10 --samples 6 $EXTRA
+          test -s "$RUNNER_TEMP/blender3d/noir_scene.blend"
+          python3 - "$RUNNER_TEMP/blender3d/noir_scene.json" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert data['renderer']=='Blender Cycles CPU'
+          assert data['format']=='true keyframed 3D'
+          assert data['slideshow'] is False and data['narrator_visible'] is False
+          assert len(data['camera_shots'])==12
+          assert len(data['animated_objects'])>=5
+          print('3D_GATES_ALL_PASSED')
+          PY
+
+      - name: Render consecutive actual 3D animation frames (not a slideshow)
+        timeout-minutes: 47
+        shell: bash
+        run: |
+          set -euo pipefail
+          blender -b -t 4 "$RUNNER_TEMP/blender3d/noir_scene.blend" -a > "$RUNNER_TEMP/blender3d/blender_render.log" 2>&1 || {
+            tail -80 "$RUNNER_TEMP/blender3d/blender_render.log"
+            exit 1
+          }
+          count=$(find "$RUNNER_TEMP/blender3d/frames" -name 'frame_*.png' -type f | wc -l)
+          echo "BLENDER_3D_FRAMES=$count" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$count" -ge 75
+
+      - name: Compose approved voiceover and synchronized subtitles on rendered animation
+        env:
+          MODE: ${{ github.event.inputs.mode || 'preview' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 fabrica_free/subtitles_narrator3d.py "$RUNNER_TEMP/blender3d/subtitles.ass"
+          DUR=32.8
+          SUFFIX=completo
+          if [ "$MODE" = "preview" ]; then DUR=7.8;SUFFIX=prueba; fi
+          mkdir -p fabrica_free/blender3d_result
+          OUTPUT="fabrica_free/blender3d_result/capitulo1_blender3d_$SUFFIX.mp4"
+          ffmpeg -hide_banner -loglevel error -y -threads 4 \
+            -framerate 10 -start_number 1 -i "$RUNNER_TEMP/blender3d/frames/frame_%04d.png" \
+            -i fabrica_free/audio/narrador_original_ep01.opus \
+            -vf "fps=24,scale=1080:1920:flags=lanczos,subtitles=$RUNNER_TEMP/blender3d/subtitles.ass" \
+            -map 0:v:0 -map 1:a:0 -t "$DUR" -c:v libx264 -preset veryfast -crf 21 \
+            -pix_fmt yuv420p -c:a aac -b:a 160k -movflags +faststart "$OUTPUT"
+          test -s "$OUTPUT"
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$OUTPUT" | grep -qx '1080,1920'
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$OUTPUT" | grep -qx 'aac'
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 "$OUTPUT" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "BLENDER_3D_MP4_VERIFIED=$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload real 3D result with Blender source and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: misterio-blender3d-${{ github.event.inputs.mode || 'preview' }}-${{ github.run_id }}
+          path: |
+            fabrica_free/blender3d_result/*.mp4
+            ${{ runner.temp }}/blender3d/noir_scene.blend
+            ${{ runner.temp }}/blender3d/noir_scene.json
+          retention-days: 5
+          if-no-files-found: warn
