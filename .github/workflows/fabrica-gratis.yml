@@ -5,7 +5,10 @@ on:
     branches: [fabrica-gratis-prototipo]
     paths:
       - '.github/workflows/fabrica-gratis.yml'
-      - 'fabrica_free/**'
+      - 'fabrica_free/kokoro_episode.py'
+      - 'fabrica_free/agent_room.py'
+      - 'fabrica_free/request.json'
+      - 'fabrica_free/validate_script.py'
   workflow_dispatch:
 
 permissions:
