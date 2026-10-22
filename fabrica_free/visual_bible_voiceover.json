@@ -1,0 +1,130 @@
+{
+  "series": "El Archivo de las 03:17",
+  "episode": 1,
+  "format": "novela visual narrada",
+  "narrator": {
+    "visible": false,
+    "voice": "conservar exactamente la voz original del prototipo",
+    "style": "en off, natural y con tensión; jamás una persona hablándole a cámara"
+  },
+  "hard_rules": [
+    "Prohibido mostrar narrador, presentador o persona contando la historia",
+    "Prohibida la taza protagonista o personajes-objecto antropomórficos",
+    "Cada línea de narración corresponde a una escena visual de la acción o una pista",
+    "Las escenas representan el acontecimiento mencionado, no simplemente una cara",
+    "Los subtítulos siguen la voz, con dos grupos legibles por frase",
+    "El corte final del armario deja suspense y oscurece la imagen",
+    "Mantener continuidad del cuarto, Vera, Julián y las pistas"
+  ],
+  "visual_style": {
+    "genre": "thriller psicológico realista",
+    "light": "madrugada; azul petróleo, sombras, puntos de luz fría",
+    "editing": "12 planos, cortes causales, acercamientos lentos, sin talking heads",
+    "priority": [
+      "telefonos",
+      "mano y objetos",
+      "fotografia",
+      "cajon",
+      "armario",
+      "Vera actuando"
+    ]
+  },
+  "shots": [
+    {
+      "shot": 1,
+      "description": "03:17: reloj y teléfono iluminan el dormitorio vacío; Vera fuera de foco, narración en off",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "gentle_pan"
+    },
+    {
+      "shot": 2,
+      "description": "Pantalla de teléfono con llamada perdida",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "slow_push"
+    },
+    {
+      "shot": 3,
+      "description": "Contacto Julián y una fotografía envejecida, no un presentador",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "gentle_pan"
+    },
+    {
+      "shot": 4,
+      "description": "Cartel de desaparecido de hace seis años",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "slow_push"
+    },
+    {
+      "shot": 5,
+      "description": "Pantalla de mensaje de voz: siete segundos",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "gentle_pan"
+    },
+    {
+      "shot": 6,
+      "description": "Reproducción de la grabación con onda sonora y reflejo de Vera",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "slow_push"
+    },
+    {
+      "shot": 7,
+      "description": "Transcripción: nunca abras el cajón inferior",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "gentle_pan"
+    },
+    {
+      "shot": 8,
+      "description": "Vera vista de espaldas acercándose al escritorio",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "slow_push"
+    },
+    {
+      "shot": 9,
+      "description": "Primer plano del cajón inferior ya abierto",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "gentle_pan"
+    },
+    {
+      "shot": 10,
+      "description": "Polaroid con fecha del día siguiente",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "slow_push"
+    },
+    {
+      "shot": 11,
+      "description": "Primer plano de la foto: dormitorio vacío",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "gentle_pan"
+    },
+    {
+      "shot": 12,
+      "description": "Armario en penumbra, tres golpes y corte a negro",
+      "voiceover": true,
+      "narrator_visible": false,
+      "subtitle_phrase_count": 2,
+      "camera_motion": "slow_push"
+    }
+  ]
+}
