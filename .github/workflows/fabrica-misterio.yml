@@ -1,153 +1,15 @@
-name: La Fabrica - Novelas de misterio 3D GRATIS
-
+name: RETIRADO - Misterio antiguo en escritorio
 on:
-  push:
-    branches: [fabrica-gratis-prototipo]
-    paths:
-      - '.github/workflows/fabrica-misterio.yml'
-      - 'fabrica_free/mystery_room.py'
-      - 'fabrica_free/mystery_render.py'
-      - 'fabrica_free/mystery_request.json'
-      - 'fabrica_free/season_story.py'
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: fabrica-misterio-ep01
-  cancel-in-progress: true
-
 jobs:
-  mystery-episode:
-    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/fabrica-gratis-prototipo'
+  retired:
     runs-on: ubuntu-24.04
-    timeout-minutes: 85
-    env:
-      PYTHONUTF8: '1'
-      DISABLE_TELEMETRY: '1'
-      HF_HUB_DISABLE_TELEMETRY: '1'
-      PROYECTO: /tmp/mystery-engine
-      FABRICA_CACHE: /tmp/mystery-cache
     steps:
-      - name: Checkout only isolated owner branch
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-
-      - name: Compile and validate request before any LLM call
+      - name: No generar contenido fuera de la norma 3D
         shell: bash
         run: |
-          set -euo pipefail
-          python3 -m py_compile fabrica_free/mystery_room.py fabrica_free/mystery_render.py
-          python3 - <<'PY'
-          import json
-          r=json.load(open('fabrica_free/mystery_request.json'))
-          assert r['genre']=='misterio' and type(r['episode']) is int and 1<=r['episode']<=6
-          assert str(r['agents']) in ('1','16')
-          assert r['quality'] in ('humo','draft')
-          assert r['voice'] in ('em_alex','em_santa','ef_dora')
-          assert 6<=len(r['topic'])<=190
-          print('Solicitud validada, sin costes de pago')
-          PY
-
-      - name: Claude Code official, 1 or 16 mystery agents
-        id: writer
-        timeout-minutes: 35
-        env:
-          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
-          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
-          ANTHROPIC_DEFAULT_SONNET_MODEL: openai/gpt-oss-20b
-          ANTHROPIC_MODEL: sonnet
-          CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: '1'
-          CLAUDE_CODE_SIMPLE: '1'
-          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '1700'
-          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
-          DISABLE_AUTOUPDATER: '1'
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install --global @anthropic-ai/claude-code@2.1.296
-          python3 fabrica_free/mystery_room.py --request fabrica_free/mystery_request.json             --out fabrica_free/mystery_story.json
-          python3 - <<'PY'
-          import json,os
-          report=json.load(open('fabrica_free/mystery_report.json'))
-          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
-              f.write(f"Agentes de misterio: {report['successes']} / {report['requested']}\n")
-              f.write(f"Guion predefinido de emergencia: {report['fallback']}\n")
-          PY
-
-      - name: Download La Fabrica original for private personal use
-        shell: bash
-        run: |
-          set -euo pipefail
-          git clone --filter=blob:none https://github.com/tarritoai/fabrica.git "$RUNNER_TEMP/tarrito-fabrica"
-          cd "$RUNNER_TEMP/tarrito-fabrica"
-          git checkout --detach 54288ed0ae557aeabcc78f5b4f4a9e2496463c98
-          test -f LICENSE.md
-
-      - name: Install original Blender, ffmpeg and lipsync tools
-        timeout-minutes: 29
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash "$RUNNER_TEMP/tarrito-fabrica/plugin/scripts/fabrica.sh" todo             --proyecto "$PROYECTO" --hasta dependencias
-          test -f "$PROYECTO/reels/schema.py"
-
-      - name: Prepare free Spanish Kokoro voices
-        timeout-minutes: 12
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq espeak-ng
-          export PATH="$HOME/.local/bin:$PATH"
-          uv pip install --python "$PROYECTO/.venv/bin/python" torch --index-url https://download.pytorch.org/whl/cpu
-          uv pip install --python "$PROYECTO/.venv/bin/python" 'kokoro>=0.9.4,<1' soundfile
-
-      - name: Validate real 13 scene script against original Pydantic schema
-        shell: bash
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/.local/bin:$PATH"
-          cd "$PROYECTO"
-          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/mystery_render.py"             --factory "$PROYECTO"             --story "$GITHUB_WORKSPACE/fabrica_free/mystery_story.json"             --request "$GITHUB_WORKSPACE/fabrica_free/mystery_request.json" --validate-only
-
-      - name: Generate voice, facial movement and mystery animation
-        timeout-minutes: 42
-        shell: bash
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/.local/bin:$PATH"
-          cd "$PROYECTO"
-          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/mystery_render.py"             --factory "$PROYECTO"             --story "$GITHUB_WORKSPACE/fabrica_free/mystery_story.json"             --request "$GITHUB_WORKSPACE/fabrica_free/mystery_request.json"
-
-      - name: Validate complete vertical mystery episode and sound
-        shell: bash
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/.local/bin:$PATH"
-          part="$(python3 -c "import json; print(str(json.load(open('fabrica_free/mystery_request.json'))['episode']).zfill(2))")"
-          f="$GITHUB_WORKSPACE/fabrica_free/mystery_output/misterio_ep${part}.mp4"
-          test -s "$f"
-          cd "$PROYECTO"
-          probe="$(uv run --no-sync python -c 'from reels import system;print(system.ffprobe())')"
-          "$probe" -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1 "$f" | tee "$RUNNER_TEMP/video.log"
-          "$probe" -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$f" | grep -Eq 'aac|mp3|opus'
-          grep -Fx 'width=1080' "$RUNNER_TEMP/video.log"
-          grep -Fx 'height=1920' "$RUNNER_TEMP/video.log"
-          "$probe" -v error -show_entries format=duration,size -of default=noprint_wrappers=1 "$f" | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Deliver editable script, series bible, agent audit and MP4
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: misterio-piloto-${{ github.run_id }}
-          path: |
-            fabrica_free/mystery_story.json
-            fabrica_free/mystery_bible.json
-            fabrica_free/mystery_report.json
-            fabrica_free/mystery_output/*.mp4
-            fabrica_free/mystery_output/3d_scene_script.json
-          retention-days: 3
-          if-no-files-found: warn
+          echo "Este flujo quedó retirado. Todos los nuevos videos deben usar Blender 3D con acciones, cámaras y escenarios físicos."
+          echo "Flujo vigente: .github/workflows/misterio-blender3d-obligatorio.yml"
+          exit 1
