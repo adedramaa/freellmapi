@@ -54,5 +54,14 @@ jobs:
             echo "Original narrator already archived"
           else
             git commit -m "misterio: preserve approved 32.8s narrator for true Blender 3D revisions"
-            git push origin HEAD:refs/heads/fabrica-gratis-prototipo
+            for attempt in 1 2 3; do
+              git fetch origin fabrica-gratis-prototipo
+              git rebase origin/fabrica-gratis-prototipo
+              if git push origin HEAD:refs/heads/fabrica-gratis-prototipo; then
+                echo "Narration archived on branch"; exit 0
+              fi
+              sleep 3
+            done
+            echo "Could not archive narration safely" >&2
+            exit 1
           fi
