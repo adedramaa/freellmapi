@@ -85,6 +85,9 @@ def main():
     a.add_argument("--validate-only",action="store_true")
     args=a.parse_args()
     request=json.loads(args.request.read_text(encoding="utf-8"))
+    part=request.get("episode")
+    if type(part) is not int or not 1<=part<=6:
+        raise ValueError("El episodio debe ser un entero entre 1 y 6")
     story=json.loads(args.story.read_text(encoding="utf-8"))
     quality=request.get("quality","humo")
     voice=request.get("voice","em_alex")
