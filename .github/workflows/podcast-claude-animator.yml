@@ -1,0 +1,46 @@
+name: Podcast Claude Code Facial Animation
+on:
+  push:
+    branches:
+      - podcast/claudecode-still-photo-20261022
+    paths:
+      - .github/workflows/podcast-claude-animator.yml
+permissions:
+  contents: read
+jobs:
+  claude-design:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - name: Install official Claude Code
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Generate safe reusable photo animation helper
+        shell: bash
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '4096'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+        run: |
+          set -euo pipefail
+          test -n "$ANTHROPIC_AUTH_TOKEN"
+          mkdir -p /tmp/podcast
+          cat > /tmp/podcast/prompt.txt <<'PROMPT'
+          Write a Python 3 module using ONLY numpy and OpenCV that animates an ORIGINAL STILL PODCAST PHOTO in sync with per-frame real speech energy. It must include def animate_mouth(frame_bgr: np.ndarray, opening: float, *, center=(680,362), roi=(570,315,810,425)) -> np.ndarray. It must keep the still photo the same size and crop, preserve face identity, use a smoothly feathered cv2.remap inside mouth ROI for tiny jaw opening movement (not pasted false mouth), and return frame. Also define animate_blink(frame_bgr, amount:float, centers=((615,260),(775,267))) as subtle eye compressions, and a safe apply_tiny_head_sway(frame_bgr,time_seconds:float) with subtle local deformation of face only. Ensure no pixel outside the local ROIs changes. Provide valid standalone Python SOURCE ONLY, no markdown or commentary. Do not access files/network, do not call external models.
+          PROMPT
+          timeout 180 claude --bare -p "$(cat /tmp/podcast/prompt.txt)" --model "$ANTHROPIC_MODEL" --max-turns 1 --tools "" --allowedTools "" --permission-mode dontAsk --strict-mcp-config --disable-slash-commands --no-session-persistence --output-format text > /tmp/podcast/claude_photo_animation.py
+          test -s /tmp/podcast/claude_photo_animation.py
+          python -m py_compile /tmp/podcast/claude_photo_animation.py
+          echo 'CLAUDE_CODE_PYTHON_OK'
+      - name: Upload generated source for local media processing
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-podcast-code
+          path: /tmp/podcast/claude_photo_animation.py
+          if-no-files-found: ignore
+          retention-days: 2
