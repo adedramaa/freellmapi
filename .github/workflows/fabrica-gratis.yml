@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: fabrica-gratis-prototipo
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   video-3d:
