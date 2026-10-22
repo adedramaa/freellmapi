@@ -106,11 +106,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          f=fabrica_free/out/fabrica_kokoro_3d.mp4
+          export PATH="$HOME/.local/bin:$PATH"
+          f="$GITHUB_WORKSPACE/fabrica_free/out/fabrica_kokoro_3d.mp4"
           test -s "$f"
-          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$f" | grep -E 'h264|vp9|av1'
-          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$f" | grep -E 'aac|mp3|opus'
-          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 "$f" >> "$GITHUB_STEP_SUMMARY"
+          cd "$PROYECTO"
+          probe="$(uv run --no-sync python -c 'from reels import system; print(system.ffprobe())')"
+          "$probe" -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$f" | grep -E 'h264|vp9|av1'
+          "$probe" -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$f" | grep -E 'aac|mp3|opus'
+          "$probe" -v error -show_entries format=duration,size -of default=noprint_wrappers=1 "$f" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Deliver MP4 and validated script for Android
         if: always()
