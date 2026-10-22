@@ -33,35 +33,34 @@ jobs:
           persist-credentials: false
 
       - name: Validate local Python
-        run: python3 -m py_compile fabrica_free/kokoro_episode.py fabrica_free/validate_script.py
+        run: python3 -m py_compile fabrica_free/kokoro_episode.py fabrica_free/agent_room.py
 
-      - name: Run real Claude Code with existing FreeLLMAPI
+      - name: Run real Claude Code agents via FREE FreeLLMAPI
         id: claude
-        continue-on-error: true
-        timeout-minutes: 5
+        timeout-minutes: 25
         env:
           ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
           ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
-          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          ANTHROPIC_DEFAULT_SONNET_MODEL: openai/gpt-oss-20b
+          ANTHROPIC_MODEL: sonnet
+          CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: '1'
           CLAUDE_CODE_SIMPLE: '1'
-          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '320'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '500'
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
           DISABLE_AUTOUPDATER: '1'
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$ANTHROPIC_AUTH_TOKEN" || { echo 'Unified FreeLLMAPI token absent'; exit 1; }
           npm install --global @anthropic-ai/claude-code@2.1.296
-          timeout 155 claude --bare -p 'Eres un guionista para un reel animado 3D. Devuelve UNICAMENTE JSON valido sin markdown: {"lines":["frase 1","frase 2"]}. Dos frases de 8 a 70 caracteres con MAXIMO 8 PALABRAS POR FRASE, español latinoamericano muy natural y divertido, ritmo rapido, un objeto simpatico explica que su voz y animacion 3D son gratuitas. No prometas viralidad. No ejecutes herramientas.'             --model "$ANTHROPIC_MODEL" --max-turns 2             --tools '' --permission-mode dontAsk --strict-mcp-config             --disable-slash-commands --no-session-persistence             --output-format text > "$RUNNER_TEMP/claude-lines.txt"
-          test -s "$RUNNER_TEMP/claude-lines.txt"
-
-      - name: Validate Claude output or record fallback
-        env:
-          CLAUDE_STEP_RESULT: ${{ steps.claude.outcome }}
-        run: |
-          python3 fabrica_free/validate_script.py "$RUNNER_TEMP/claude-lines.txt" fabrica_free/lines.json
-          echo "claude_step=$CLAUDE_STEP_RESULT" >> "$GITHUB_STEP_SUMMARY"
-          echo "voz=Kokoro, cero ElevenLabs" >> "$GITHUB_STEP_SUMMARY"
+          python3 fabrica_free/agent_room.py \
+            --request fabrica_free/request.json --out fabrica_free/lines.json
+          python3 - <<'PY'
+          import json,os
+          report=json.load(open('fabrica_free/agents_report.json',encoding='utf-8'))
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:
+              f.write(f"Claude Code roles completed: {report['completed_roles']}/{report['requested_roles']}\\n")
+              f.write(f"Fallback used: {report['used_default']}\\n")
+          PY
 
       - name: Clone La Fabrica original for personal use (no redistribution)
         shell: bash
@@ -100,7 +99,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.local/bin:$PATH"
           cd "$PROYECTO"
-          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/kokoro_episode.py"             --factory "$PROYECTO" --lines "$GITHUB_WORKSPACE/fabrica_free/lines.json"             --voice em_alex
+          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/kokoro_episode.py"             --factory "$PROYECTO" --lines "$GITHUB_WORKSPACE/fabrica_free/lines.json" --request "$GITHUB_WORKSPACE/fabrica_free/request.json"
 
       - name: Confirm video and audio tracks
         shell: bash
@@ -123,5 +122,6 @@ jobs:
           path: |
             fabrica_free/out/*.mp4
             fabrica_free/lines.json
+            fabrica_free/agents_report.json
           if-no-files-found: warn
           retention-days: 3
