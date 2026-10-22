@@ -3,6 +3,7 @@ on:
   push:
     branches: [fabrica-gratis-prototipo]
     paths:
+      - 'fabrica_free/audio/narrador_original_ep01.opus'
       - 'fabrica_free/blender_noir_3d.py'
       - 'fabrica_free/subtitles_narrator3d.py'
       - '.github/workflows/misterio-blender3d-obligatorio.yml'
