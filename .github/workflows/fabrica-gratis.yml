@@ -24,8 +24,8 @@ jobs:
       PYTHONUTF8: '1'
       DISABLE_TELEMETRY: '1'
       HF_HUB_DISABLE_TELEMETRY: '1'
-      FABRICA_CACHE: ${{ runner.temp }}/fabrica-cache
-      PROYECTO: ${{ runner.temp }}/fabrica-run
+      FABRICA_CACHE: /tmp/fabrica-cache
+      PROYECTO: /tmp/fabrica-run
     steps:
       - name: Read isolated test branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
