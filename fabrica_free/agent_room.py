@@ -39,7 +39,12 @@ def ask(role,focus,topic,current,options):
        "--tools","","--permission-mode","dontAsk","--strict-mcp-config",
        "--disable-slash-commands","--no-session-persistence","--output-format","text"],
        capture_output=True,text=True,timeout=75,check=False)
-    if result.returncode: raise RuntimeError("Claude CLI error "+str(result.returncode))
+    if result.returncode:
+        msg=(result.stderr+" "+result.stdout).lower()
+        marker=("RATE_LIMIT" if any(w in msg for w in ("429","rate limit","too many requests","quota")) else
+                "AUTH" if any(w in msg for w in ("401","unauthorized","authentication failed")) else
+                "GATEWAY_OR_OTHER")
+        raise RuntimeError("Claude CLI exit "+str(result.returncode)+"; tipo="+marker)
     lines=parse_lines(result.stdout)
     if not lines: raise ValueError("Salida del agente no valida (JSON/esquema)")
     return lines
@@ -63,10 +68,16 @@ def main():
     for role,focus in roles:
         started=time.monotonic()
         try:
-            lines=ask(role,focus,topic,current,options)
+            try:
+                lines=ask(role,focus,topic,current,options)
+            except (RuntimeError,ValueError,subprocess.TimeoutExpired):
+                print(role+": primer intento fallido; reintento limitado tras pausa",flush=True)
+                time.sleep(35)
+                lines=ask(role,focus,topic,current,options)
             current=lines;options.append(lines);consecutive=0
             report.append({"role":role,"status":"success","seconds":round(time.monotonic()-started,1)})
             print(role+": JSON valido",flush=True)
+            if role!=roles[-1][0]: time.sleep(20)
         except (RuntimeError,ValueError,subprocess.TimeoutExpired) as exc:
             consecutive+=1
             report.append({"role":role,"status":"failure","error":str(exc)[:120],
