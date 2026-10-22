@@ -1,0 +1,57 @@
+name: Fabrica - diagnose 16-role Claude calls
+on:
+  push:
+    branches: [fabrica-gratis-prototipo]
+    paths: ['.github/workflows/fabrica-roles-diagnostico.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: One real complex-role prompt, no Blender or TTS
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: openai/gpt-oss-20b
+          ANTHROPIC_MODEL: sonnet
+          CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: '1'
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '500'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_AUTOUPDATER: '1'
+          DISABLE_TELEMETRY: '1'
+        run: |
+          python3 - <<'PY'
+          import importlib.util,subprocess,time,re
+          spec=importlib.util.spec_from_file_location("room","fabrica_free/agent_room.py")
+          room=importlib.util.module_from_spec(spec);spec.loader.exec_module(room)
+          current=room.DEFAULT
+          p=("Eres agente de guion para reels 3D: una taza con cara habla a cámara. "
+             "Español latinoamericano, rápido y conversacional, con humor inteligente, sin voseo. "
+             "Devuelve SOLO JSON con clave lines, DOS FRASES de maximo 8 PALABRAS cada una. "
+             "TEMA: una taza que genera videos gratis. ROL creativo 1; OBJETIVO humor cotidiano. "
+             'FORMATO: {"lines":["Una frase breve y entretenida.","Otro remate breve y natural."]}')
+          cmd=["claude","--bare","-p",p,"--model","sonnet","--max-turns","2","--tools","",
+               "--permission-mode","dontAsk","--strict-mcp-config","--disable-slash-commands",
+               "--no-session-persistence","--output-format","text"]
+          start=time.monotonic()
+          try:
+              v=subprocess.run(cmd,capture_output=True,text=True,timeout=85)
+              err=(v.stderr+" "+v.stdout).lower()
+              print("exit",v.returncode,"seconds",round(time.monotonic()-start,1))
+              print("stdout_chars",len(v.stdout),"stderr_chars",len(v.stderr))
+              print("markers",{x:bool(re.search(x,err)) for x in ("429","401","403","404","400","502","503","rate","quota","limit","unrecognized","timeout","credit","invalid","authentication","error")})
+              print("json_parsed",bool(room.parse_lines(v.stdout)))
+              print("response_preview",re.sub(r'[^a-zA-Z0-9:;.,() \[\]{}_-]','',v.stdout[:170]))
+              print("stderr_preview",re.sub(r'[^a-zA-Z0-9:;.,() \[\]{}_-]','',v.stderr[-170:]))
+              if v.returncode or not room.parse_lines(v.stdout): raise SystemExit(1)
+          except subprocess.TimeoutExpired:
+              print("timeout");raise SystemExit(1)
+          PY
