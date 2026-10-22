@@ -40,7 +40,7 @@ jobs:
           python3 - <<'PY'
           import json
           r=json.load(open('fabrica_free/mystery_request.json'))
-          assert r['genre']=='misterio' and r['episode']==1
+          assert r['genre']=='misterio' and type(r['episode']) is int and 1<=r['episode']<=6
           assert str(r['agents']) in ('1','16')
           assert r['quality'] in ('humo','draft')
           assert r['voice'] in ('em_alex','em_santa','ef_dora')
@@ -124,7 +124,8 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="$HOME/.local/bin:$PATH"
-          f="$GITHUB_WORKSPACE/fabrica_free/mystery_output/misterio_storyboard_ep01.mp4"
+          part="$(python3 -c "import json; print(str(json.load(open('fabrica_free/mystery_request.json'))['episode']).zfill(2))")"
+          f="$GITHUB_WORKSPACE/fabrica_free/mystery_output/misterio_storyboard_ep${part}.mp4"
           test -s "$f"
           cd "$PROYECTO"
           probe="$(uv run --no-sync python -c 'from reels import system;print(system.ffprobe())')"
