@@ -83,6 +83,13 @@ def main():
     directory=smoke.prepare()
     base=json.loads((directory/"script.json").read_text(encoding="utf-8"))
     episode,raw=episode_from_story(base,story,request)
+    # The smoke fixture lives under episodes/humo. Move it to the actual story slug
+    # before generating audio: timeline/lipsync always resolve paths by episode.slug.
+    actual=directory.parent/episode.slug
+    if actual.exists():
+        shutil.rmtree(actual)
+    directory.rename(actual)
+    directory=actual
     (directory/"script.json").write_text(json.dumps(raw,ensure_ascii=False,indent=2),encoding="utf-8")
     if args.validate_only:
         print("EPISODIO_VALIDO="+str(len(episode.beats))+" escenas, 12 dialogos, cliffhanger",flush=True)
