@@ -36,7 +36,8 @@ jobs:
           import json,sys,re
           v=open(sys.argv[1],encoding="utf-8").read()
           print("MODEL_OUTPUT_LENGTH",len(v))
-          m=re.search(r"\\{[\\s\\S]*\\}",v)
+          print("MODEL_OUTPUT_FIRST_200",repr(v[:200]))
+          m=re.search(r"\{[\s\S]*\}",v)
           if not m: raise SystemExit("No JSON from Claude Code")
           d=json.loads(m.group())
           assert len(d["lines"])==2
