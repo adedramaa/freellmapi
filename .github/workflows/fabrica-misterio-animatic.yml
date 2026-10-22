@@ -108,7 +108,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.local/bin:$PATH"
           cd "$PROYECTO"
-          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/mystery_render.py"             --factory "$PROYECTO"             --story "$GITHUB_WORKSPACE/fabrica_free/mystery_story.json"             --request "$GITHUB_WORKSPACE/fabrica_free/mystery_request.json" --validate-only
+          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/mystery_animatic.py"             --factory "$PROYECTO"             --story "$GITHUB_WORKSPACE/fabrica_free/mystery_story.json"             --request "$GITHUB_WORKSPACE/fabrica_free/mystery_request.json" --validate-only
 
       - name: Produce Kokoro voice plus true Blender 3D stills and cinematic montage
         timeout-minutes: 22
@@ -117,7 +117,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.local/bin:$PATH"
           cd "$PROYECTO"
-          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/mystery_render.py"             --factory "$PROYECTO"             --story "$GITHUB_WORKSPACE/fabrica_free/mystery_story.json"             --request "$GITHUB_WORKSPACE/fabrica_free/mystery_request.json"
+          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/mystery_animatic.py"             --factory "$PROYECTO"             --story "$GITHUB_WORKSPACE/fabrica_free/mystery_story.json"             --request "$GITHUB_WORKSPACE/fabrica_free/mystery_request.json"
 
       - name: Validate cinematic mystery storyboard episode and audio
         shell: bash
