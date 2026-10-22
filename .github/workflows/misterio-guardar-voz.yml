@@ -1,0 +1,54 @@
+name: Misterio - preservar narrador original
+on:
+  push:
+    branches: [fabrica-gratis-prototipo]
+    paths: ['.github/workflows/misterio-guardar-voz.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  archive-voice:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/fabrica-gratis-prototipo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Recover real approved narrator without resynthesis
+        uses: actions/download-artifact@v4
+        with:
+          name: misterio-piloto-39837820917
+          run-id: 39837820917
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: original
+      - name: Extract tiny archival opus voice for all future 3D rerenders
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=original/mystery_output/misterio_ep01.mp4
+          test -s "$src"
+          mkdir -p fabrica_free/audio
+          ffmpeg -hide_banner -loglevel error -y -i "$src" -map 0:a:0 -vn -c:a libopus -b:a 48k -vbr on fabrica_free/audio/narrador_original_ep01.opus
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 fabrica_free/audio/narrador_original_ep01.opus | grep -qx opus
+          python3 - <<'PY'
+          import subprocess
+          p=subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=nw=1:nk=1','fabrica_free/audio/narrador_original_ep01.opus'])
+          duration=float(p)
+          print('NARRADOR_ORIGINAL_PRESERVADO',round(duration,2))
+          assert 32.2<duration<33.2
+          PY
+      - name: Commit archived original voice to prototype branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fabrica_free/audio/narrador_original_ep01.opus
+          if git diff --cached --quiet; then
+            echo "Original narrator already archived"
+          else
+            git commit -m "misterio: preserve approved 32.8s narrator for true Blender 3D revisions"
+            git push origin HEAD:refs/heads/fabrica-gratis-prototipo
+          fi
