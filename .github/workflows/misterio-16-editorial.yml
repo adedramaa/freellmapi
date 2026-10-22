@@ -37,7 +37,7 @@ jobs:
           request={
             "genre":"misterio","series":"EL ARCHIVO DE LAS 03:17","episode":1,
             "agents":"16","voice":"em_alex","quality":"humo",
-            "topic":"Audita el primer capítulo ya narrado: Vera recibe una llamada a las 03:17, descubre una advertencia sobre el cajón, una fotografía fechada mañana y escucha tres golpes en el armario. Mantén la voz invisible. El video muestra el teléfono, el cajón y el armario moviéndose, nunca una persona hablando a cámara; no agregues personajes sin causa."
+            "topic":"Audita guion de misterio: Vera, Julian, cajon, foto fechada manana y tres golpes en armario. Nunca mostrar narrador ni objetos parlantes. Mantener suspenso."
           }
           open('fabrica_free/editorial_request.json','w',encoding='utf-8').write(json.dumps(request,ensure_ascii=False))
           PY
