@@ -25,7 +25,13 @@ def main():
     ap.add_argument("--factory",required=True,type=Path)
     ap.add_argument("--lines",required=True,type=Path)
     ap.add_argument("--voice",choices=["em_alex","ef_dora","em_santa"],default="em_alex")
+    ap.add_argument("--request",type=Path,default=None)
     args=ap.parse_args()
+    request=json.loads(args.request.read_text(encoding="utf-8")) if args.request else {}
+    voice=request.get("voice",args.voice)
+    quality=request.get("quality","humo")
+    if voice not in ("em_alex","ef_dora","em_santa"): raise ValueError("Voz no admitida")
+    if quality not in ("humo","draft"): raise ValueError("Calidad no admitida")
     lines=json.loads(args.lines.read_text(encoding="utf-8"))["lines"]
     if not isinstance(lines,list) or len(lines)!=2 or any(not isinstance(t,str) or not 8<=len(t)<=90 for t in lines):
         raise ValueError("Se requieren dos frases breves y validadas")
@@ -48,7 +54,7 @@ def main():
     pipeline=KPipeline(lang_code="e")
     for beat in (b for b in episode.beats if b.line):
         base=episode_dir/"audio"/f"beat_{beat.id:02d}"
-        parts=[np.asarray(audio,dtype=np.float32).reshape(-1) for _,_,audio in pipeline(beat.line,voice=args.voice,speed=1.05)]
+        parts=[np.asarray(audio,dtype=np.float32).reshape(-1) for _,_,audio in pipeline(beat.line,voice=voice,speed=1.04)]
         if not parts: raise RuntimeError("Kokoro no devolvio audio")
         audio=np.concatenate(parts)
         if len(audio)<2400: raise RuntimeError("Audio demasiado corto")
@@ -66,8 +72,8 @@ def main():
     marker="scene.cycles.use_denoising = False"
     if marker not in original: raise RuntimeError("No se encontró opción de denoise de La Fabrica")
     renderer.write_text(original.replace(marker,"scene.cycles.use_denoising = True"),encoding="utf-8")
-    print("Renderizando Blender CPU en calidad draft con denoise (6 samples)",flush=True)
-    engine.render(episode.slug,"draft")
+    print("Renderizando Blender CPU en calidad "+quality+" con denoise",flush=True)
+    engine.render(episode.slug,quality)
     final=engine.compose(episode.slug)
     out=Path(os.environ.get("GITHUB_WORKSPACE",Path.cwd()))/"fabrica_free"/"out"
     out.mkdir(parents=True,exist_ok=True)
