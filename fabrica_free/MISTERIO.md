@@ -26,3 +26,8 @@
 - El MP4 **solo** se declara verificado cuando pasa inspección de pistas H.264 1080×1920 + audio AAC y revisión visual.
 - Las voces pueden sonar menos naturales que servicios pagos. No hay garantía de viralidad.
 - GitHub Actions y FreeLLMAPI tienen cuotas, aunque no se contrate un plan de pago.
+
+
+## Regla vigente: Blender 3D desde 22/10/2026
+
+La versión 2.5D (imágenes con paneo o animatic) está **retirada** para todas las nuevas entregas. No se debe ejecutar la vieja fábrica de misterio en escritorio ni el animatic. Solo está autorizado [MISTERIO - Blender 3D obligatorio](../.github/workflows/misterio-blender3d-obligatorio.yml), con geometría 3D, posiciones/rotaciones animadas, múltiples cámaras reales, narrador invisible y verificación de calidad. Fuente de verdad: [PRODUCCION_3D_OBLIGATORIA.md](./PRODUCCION_3D_OBLIGATORIA.md). El motor nuevo tiene por ahora escenas específicas del primer capítulo; cada capítulo siguiente exige crear y validar sus propias animaciones tridimensionales, antes de producirlo.
