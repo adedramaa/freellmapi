@@ -261,7 +261,8 @@ scene.render.filepath=str(Path(a.out).resolve().parent/"frames"/"frame_")
 scene.world.color=(.012,.016,.03)
 scene.render.threads_mode="FIXED"
 scene.render.threads=4
-scene.view_settings.view_transform="AgX" if "AgX" in {i.name for i in bpy.types.ColorManagedViewSettings.bl_rna.properties["view_transform"].enum_items} else "Standard"
+try: scene.view_settings.view_transform="AgX"
+except (TypeError,ValueError): scene.view_settings.view_transform="Standard"
 # Require actual 3D world transforms across frames, no still frames.
 def moved(obj,t1,t2,prop):
     scene.frame_set(frame(t1));left=tuple(getattr(obj,prop))
