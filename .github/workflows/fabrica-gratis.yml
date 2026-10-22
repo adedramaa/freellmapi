@@ -1,0 +1,124 @@
+name: La Fabrica gratis - Claude Code, Kokoro y Blender
+
+on:
+  push:
+    branches: [fabrica-gratis-prototipo]
+    paths:
+      - '.github/workflows/fabrica-gratis.yml'
+      - 'fabrica_free/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fabrica-gratis-prototipo
+  cancel-in-progress: false
+
+jobs:
+  video-3d:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/fabrica-gratis-prototipo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    env:
+      PYTHONUTF8: '1'
+      DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      FABRICA_CACHE: ${{ runner.temp }}/fabrica-cache
+      PROYECTO: ${{ runner.temp }}/fabrica-run
+    steps:
+      - name: Read isolated test branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Validate local Python
+        run: python3 -m py_compile fabrica_free/kokoro_episode.py fabrica_free/validate_script.py
+
+      - name: Run real Claude Code with existing FreeLLMAPI
+        id: claude
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '320'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_AUTOUPDATER: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANTHROPIC_AUTH_TOKEN" || { echo 'Unified FreeLLMAPI token absent'; exit 1; }
+          npm install --global @anthropic-ai/claude-code@2.1.296
+          timeout 155 claude --bare -p 'Eres un guionista para un reel animado 3D. Devuelve UNICAMENTE JSON valido sin markdown: {"lines":["frase 1","frase 2"]}. Dos frases de 8 a 90 caracteres, español latinoamericano muy natural y divertido, ritmo rapido, un objeto simpatico explica que su voz y animacion 3D son gratuitas. No prometas viralidad. No ejecutes herramientas.'             --model "$ANTHROPIC_MODEL" --max-turns 2             --tools '' --permission-mode dontAsk --strict-mcp-config             --disable-slash-commands --no-session-persistence             --output-format text > "$RUNNER_TEMP/claude-lines.txt"
+          test -s "$RUNNER_TEMP/claude-lines.txt"
+
+      - name: Validate Claude output or record fallback
+        env:
+          CLAUDE_STEP_RESULT: ${{ steps.claude.outcome }}
+        run: |
+          python3 fabrica_free/validate_script.py "$RUNNER_TEMP/claude-lines.txt" fabrica_free/lines.json
+          echo "claude_step=$CLAUDE_STEP_RESULT" >> "$GITHUB_STEP_SUMMARY"
+          echo "voz=Kokoro, cero ElevenLabs" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clone La Fabrica original for personal use (no redistribution)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/tarritoai/fabrica.git "$RUNNER_TEMP/tarrito-fabrica"
+          cd "$RUNNER_TEMP/tarrito-fabrica"
+          git checkout --detach 54288ed0ae557aeabcc78f5b4f4a9e2496463c98
+          test -f LICENSE.md && test -f plugin/scripts/fabrica.sh
+
+      - name: Install free upstream rendering dependencies
+        shell: bash
+        timeout-minutes: 30
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/tarrito-fabrica/plugin/scripts/fabrica.sh" todo             --proyecto "$PROYECTO" --hasta dependencias
+          test -d "$PROYECTO/.venv"
+          test -f "$PROYECTO/reels/smoke.py"
+
+      - name: Install local Kokoro Spanish voice (CPU)
+        shell: bash
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq espeak-ng
+          export PATH="$HOME/.local/bin:$PATH"
+          uv pip install --python "$PROYECTO/.venv/bin/python" torch --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --python "$PROYECTO/.venv/bin/python" 'kokoro>=0.9.4,<1' soundfile
+          "$PROYECTO/.venv/bin/python" -c 'from kokoro import KPipeline; print("Kokoro ready")'
+
+      - name: Real Blender 3D animation with lips and Kokoro audio
+        shell: bash
+        timeout-minutes: 33
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          cd "$PROYECTO"
+          uv run --no-sync python "$GITHUB_WORKSPACE/fabrica_free/kokoro_episode.py"             --factory "$PROYECTO" --lines "$GITHUB_WORKSPACE/fabrica_free/lines.json"             --voice em_alex
+
+      - name: Confirm video and audio tracks
+        shell: bash
+        run: |
+          set -euo pipefail
+          f=fabrica_free/out/fabrica_kokoro_3d.mp4
+          test -s "$f"
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$f" | grep -E 'h264|vp9|av1'
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$f" | grep -E 'aac|mp3|opus'
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 "$f" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deliver MP4 and validated script for Android
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fabrica-3d-kokoro-${{ github.run_id }}
+          path: |
+            fabrica_free/out/*.mp4
+            fabrica_free/lines.json
+          if-no-files-found: warn
+          retention-days: 3
