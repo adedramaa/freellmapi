@@ -55,3 +55,23 @@ jobs:
           except subprocess.TimeoutExpired:
               print("timeout");raise SystemExit(1)
           PY
+      - name: Call all sixteen actual role prompts without rendering
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: openai/gpt-oss-20b
+          ANTHROPIC_MODEL: sonnet
+          CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: '1'
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '500'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_AUTOUPDATER: '1'
+          DISABLE_TELEMETRY: '1'
+        run: |
+          python3 fabrica_free/agent_room.py --request fabrica_free/request.json --out "$RUNNER_TEMP/lines.json"
+          cat "$RUNNER_TEMP/agents_report.json"
+          python3 - "$RUNNER_TEMP/agents_report.json" <<'PY'
+          import json,sys
+          s=json.load(open(sys.argv[1]))
+          print("ROLES_COMPLETADOS:",s['completed_roles'],"de",s['requested_roles'])
+          PY
