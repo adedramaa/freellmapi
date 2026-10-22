@@ -5,6 +5,7 @@ No ejecuta el texto del modelo como codigo ni promete audiencia simulada real.
 from __future__ import annotations
 import argparse, json, os, re, subprocess, time
 from pathlib import Path
+from season_story import canonical_episode, CHAPTERS
 
 ROLES=[
  ("idea_1","Propon un comienzo inquietante con causa y efecto."),
@@ -44,7 +45,7 @@ BIBLE={
  "genre":"novela de misterio psicologico y suspense realista, serializada",
  "premise":"Vera recibe llamadas que parecen involucrar a su hermano Julian desaparecido hace seis anos; alguien manipula grabaciones, documentos y horarios.",
  "canon":["Vera es la protagonista e investiga.","Julian es su hermano desaparecido hace seis anos.","Nunca confirmar hechos sobrenaturales; cada pista admite explicacion humana.","No revelar al responsable en el primer episodio."],
- "continuity":["Capitulo 1: la llamada a las 03:17, aviso del cajon, fotografia fechada manana."],
+ "continuity":["Seis capítulos de una investigación realista; consulta season_plan.json y season_story.py."],
 }
 def parse_story(value:str, length:int=12):
  dec=json.JSONDecoder()
@@ -66,6 +67,7 @@ def parse_story(value:str, length:int=12):
 def model_call(role,task,req,previous,idea_history):
  topic=req["topic"]
  episode=req["episode"]
+ chapter=CHAPTERS[episode]
  instructions=("Eres parte de una sala editorial profesional de NOVELAS de MISTERIO. "
  "Suspense psicologico REALISTA, no humor, no objetos parlantes, no ciencia ficcion. "
  "Solo dos personajes nombrados, Vera y su hermano Julian, y un secreto. "
@@ -76,7 +78,7 @@ def model_call(role,task,req,previous,idea_history):
  "El guion debe mencionar Vera y Julian. Todo dialogo en español natural de Latinoamerica, sin voseo. "
  "Mantén las pistas cronologicas y los nombres; evita repetir oraciones iguales. "
  f"SERIE: {BIBLE['series']}. CANON: {json.dumps(BIBLE['canon'],ensure_ascii=False)}. "
- f"CAPITULO: {episode}. IDEA: {topic}. FUNCION DE ESTE AGENTE: {role} - {task}. "
+ f"CAPITULO: {episode}. TITULO Y TRAMA CANONICA: {chapter.title}; {list(chapter.lines)}. IDEA: {topic}. FUNCION DE ESTE AGENTE: {role} - {task}. "
  f"VERSION ACTUAL: {json.dumps(previous,ensure_ascii=False)}. "
  f"ANTERIORES PROPUESTAS: {json.dumps(idea_history[-2:],ensure_ascii=False)}. "
  'FORMA: {"title":"La llamada de mañana","lines":["Vera despertó cuando sonó el teléfono.","Su hermano Julián había desaparecido hace años.", "... hasta tener EXACTAMENTE 12 frases"]}')
@@ -100,11 +102,11 @@ def main():
  if req.get("genre")!="misterio": raise ValueError("genre debe ser misterio")
  if not isinstance(req.get("topic"),str) or not 6<=len(req["topic"])<=190 or "\n" in req["topic"]:
   raise ValueError("Tema fuera de rango")
- if req.get("episode")!=1: raise ValueError("La temporada piloto solo admite episodio 1 hasta aprobar continuidad")
+ if type(req.get("episode")) is not int or req["episode"] not in CHAPTERS: raise ValueError("Episodio fuera de la temporada de seis capítulos")
  role_mode=str(req.get("agents",1))
  if role_mode not in ("1","16"):raise ValueError("agents requiere 1 o 16")
  roles=ROLES if role_mode=="16" else [("guionista","Crear misterio original coherente con las pistas")]
- state={"title":"La llamada de mañana","lines":DEFAULT[:]}
+ state=canonical_episode(req["episode"])
  records=[];ideas=[];faults=0
  for role,task in roles:
   if not os.getenv("ANTHROPIC_AUTH_TOKEN"):
@@ -126,7 +128,7 @@ def main():
  args.out.parent.mkdir(parents=True,exist_ok=True)
  report={"requested":len(roles),"successes":sum(x["status"]=="success" for x in records),
          "attempts":len(records),"fallback":len(ideas)==0,"roles":records}
- args.out.write_text(json.dumps({**state,"series":BIBLE["series"],"part":1},ensure_ascii=False,indent=2),encoding="utf-8")
+ args.out.write_text(json.dumps({**state,"series":BIBLE["series"],"part":req["episode"]},ensure_ascii=False,indent=2),encoding="utf-8")
  args.out.with_name("mystery_bible.json").write_text(json.dumps(BIBLE,ensure_ascii=False,indent=2),encoding="utf-8")
  args.out.with_name("mystery_report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
  print("MYSTERY_ROLES="+str(report["successes"])+"/"+str(report["requested"]),flush=True)
