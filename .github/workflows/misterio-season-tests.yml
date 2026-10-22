@@ -1,0 +1,40 @@
+name: Misterio - six episode canon self-test
+on:
+  push:
+    branches: [fabrica-gratis-prototipo]
+    paths:
+      - '.github/workflows/misterio-season-tests.yml'
+      - 'fabrica_free/season_story.py'
+      - 'fabrica_free/season_plan.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  continuity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Audit six distinct original mystery episodes without any model or cost
+        run: |
+          python3 - <<'PY'
+          import sys, json
+          sys.path.insert(0,'fabrica_free')
+          from season_story import canonical_episode,CHAPTERS
+          plan=json.load(open('fabrica_free/season_plan.json',encoding='utf-8'))
+          assert len(CHAPTERS)==6 and len(plan['chapters'])==6
+          seen=set()
+          for p in range(1,7):
+              ep=canonical_episode(p)
+              assert ep['part']==p
+              assert len(ep['lines'])==12
+              assert p==plan['chapters'][p-1]['part']
+              assert any('Vera' in v for v in ep['lines'])
+              assert any('Julián' in v or 'Juli' in v for v in ep['lines'])
+              assert ep['title'] not in seen
+              seen.add(ep['title'])
+              print('CAPITULO',p,'APTO',ep['title'])
+          print('SEASON_OK=6/6, 72 frases, sin costo de tokens')
+          PY
