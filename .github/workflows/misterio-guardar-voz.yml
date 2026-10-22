@@ -23,6 +23,10 @@ jobs:
           run-id: 39837820917
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: original
+      - name: Install local FFmpeg (free)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
       - name: Extract tiny archival opus voice for all future 3D rerenders
         shell: bash
         run: |
