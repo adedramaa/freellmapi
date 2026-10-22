@@ -1,0 +1,53 @@
+name: Mystery Noir v2 - isolated schema audit
+on:
+  push:
+    branches: [misterio-noir-v2]
+    paths: ['.github/workflows/misterio-noir-v2-test.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate Python and six story parts
+        run: |
+          python3 -m py_compile fabrica_free/mystery_room.py fabrica_free/mystery_render.py fabrica_free/mystery_animatic.py fabrica_free/season_story.py
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0,'fabrica_free')
+          from season_story import canonical_episode
+          for part in range(1,7):
+              p=canonical_episode(part)
+              print(part,p['title'],len(p['lines']))
+          PY
+      - name: Validate female actor and phone scene against original La Fabrica schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q --filter=blob:none https://github.com/tarritoai/fabrica.git "$RUNNER_TEMP/original"
+          cd "$RUNNER_TEMP/original"
+          git checkout -q --detach 54288ed0ae557aeabcc78f5b4f4a9e2496463c98
+          curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null
+          export PATH="$HOME/.local/bin:$PATH"
+          cd plantilla
+          uv sync --no-dev
+          uv run python - <<'PY'
+          import json,sys,os
+          from pathlib import Path
+          sys.path.insert(0,os.environ['GITHUB_WORKSPACE']+'/fabrica_free')
+          from mystery_render import episode_from_story
+          from season_story import canonical_episode
+          base=json.loads(Path('assets/humo/script.json').read_text())
+          for part in (1,2,6):
+              ep,raw=episode_from_story(base,canonical_episode(part),{'episode':part})
+              assert len(ep.beats)==13 and ep.beats[-1].speaker is None
+              assert ep.beats[0].speaker.value=='voz_sola'
+              assert ep.beats[1].event.component=='PhoneCall'
+              assert ep.beats[8].event.component=='SystemNotice'
+              print('NOIR_SCHEMA_OK',part,ep.players())
+          PY
