@@ -1,0 +1,68 @@
+{
+  "series": "EL ARCHIVO DE LAS 03:17",
+  "genre": "misterio psicológico realista, drama y suspense",
+  "format": {
+    "chapters": 6,
+    "duration_seconds_target": "35-60",
+    "orientation": "9:16",
+    "publishing": "manual approval only",
+    "voice_engine": "Kokoro Spanish offline",
+    "visual_engine": "Blender 3D"
+  },
+  "canon": {
+    "protagonist": "Vera, investigadora independiente de 28 años",
+    "brother": "Julián, desapareció hace seis años",
+    "support": "Irene, antigua colega de Julián",
+    "antagonist": "Leandro, antiguo supervisor de archivo",
+    "rules": [
+      "No hay fenómenos sobrenaturales; los engaños tienen explicaciones humanas.",
+      "Nunca revelar la identidad del responsable en el primer capítulo.",
+      "No cambiar nombres, edades, tiempo transcurrido ni culpable.",
+      "Las falsas pistas y revelaciones se resuelven antes del final."
+    ]
+  },
+  "chapters": [
+    {
+      "part": 1,
+      "title": "La llamada",
+      "premise": "Vera recibe una llamada a las 03:17 del número de Julián. Una grabación advierte sobre el cajón. En él hay una fotografía falsa fechada mañana.",
+      "reveal": "La fotografía salió de una impresora que no está en su casa.",
+      "cliffhanger": "Alguien golpea desde el armario."
+    },
+    {
+      "part": 2,
+      "title": "El transmisor",
+      "premise": "Vera descubre un transmisor escondido en el armario. La etiqueta del dispositivo dice 47A y conecta el caso con el Archivo Norte.",
+      "reveal": "La llamada se emitió desde una línea intervenida.",
+      "cliffhanger": "La misma voz llama mientras el teléfono está apagado."
+    },
+    {
+      "part": 3,
+      "title": "Archivo Norte",
+      "premise": "Vera entra al archivo con la pista 47A. Encuentra un registro en el que Julián aparece como visitante hace dos días.",
+      "reveal": "El registro fue firmado por el supervisor Leandro.",
+      "cliffhanger": "Una llave aparece debajo de su auto."
+    },
+    {
+      "part": 4,
+      "title": "La caja 47A",
+      "premise": "La llave abre un casillero y contiene el archivo de manipulación de videos. Una persona de confianza facilitó el acceso al departamento.",
+      "reveal": "Irene entregó una copia de la llave bajo amenazas.",
+      "cliffhanger": "Irene asegura haber visto a Julián esa mañana."
+    },
+    {
+      "part": 5,
+      "title": "La testigo",
+      "premise": "Irene explica el encubrimiento y muestra pruebas de vigilancia ilegal organizada por Leandro. Julián fingió parte de su desaparición para proteger los originales.",
+      "reveal": "Una grabación auténtica revela dónde se esconde Julián.",
+      "cliffhanger": "La ubicación está siendo vigilada."
+    },
+    {
+      "part": 6,
+      "title": "Las 03:17",
+      "premise": "Vera ayuda a Julián a presentar las pruebas. Leandro queda expuesto y la explicación de las llamadas y fotografías es completamente humana.",
+      "reveal": "La llamada inicial era una advertencia cifrada grabada por Julián.",
+      "cliffhanger": "Un expediente anónimo llega sin remitente. Nuevo caso posible."
+    }
+  ]
+}
