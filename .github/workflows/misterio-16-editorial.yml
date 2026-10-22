@@ -1,0 +1,64 @@
+name: Misterio - auditoria editorial 16 agentes
+on:
+  push:
+    branches: [fabrica-gratis-prototipo]
+    paths: ['.github/workflows/misterio-16-editorial.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  editorial-roles:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+      ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+      ANTHROPIC_DEFAULT_SONNET_MODEL: openai/gpt-oss-20b
+      ANTHROPIC_MODEL: sonnet
+      CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: '1'
+      CLAUDE_CODE_SIMPLE: '1'
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: '1700'
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+      DISABLE_AUTOUPDATER: '1'
+      DISABLE_TELEMETRY: '1'
+    steps:
+      - name: Checkout isolated prototype
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Claude Code (real CLI)
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Review mystery canon with 16 editorial roles (no 3D render)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          request={
+            "genre":"misterio","series":"EL ARCHIVO DE LAS 03:17","episode":1,
+            "agents":"16","voice":"em_alex","quality":"humo",
+            "topic":"Audita el primer capítulo ya narrado: Vera recibe una llamada a las 03:17, descubre una advertencia sobre el cajón, una fotografía fechada mañana y escucha tres golpes en el armario. Mantén la voz invisible. El video muestra el teléfono, el cajón y el armario moviéndose, nunca una persona hablando a cámara; no agregues personajes sin causa."
+          }
+          open('fabrica_free/editorial_request.json','w',encoding='utf-8').write(json.dumps(request,ensure_ascii=False))
+          PY
+          python3 fabrica_free/mystery_room.py --request fabrica_free/editorial_request.json --out fabrica_free/editorial_story.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('fabrica_free/mystery_report.json'))
+          print('ROLES_VERIFICADOS',r['successes'],'de',r['requested'])
+          print('GUION_EMERGENCIA',r['fallback'])
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:
+              f.write(f"Agentes con respuesta validada: {r['successes']}/{r['requested']}\\n")
+              f.write(f"Se usó guion de respaldo: {r['fallback']}\\n")
+          PY
+      - name: Save evidence for user review (not automatic publishing)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: misterio-16-editorial-${{ github.run_id }}
+          path: |
+            fabrica_free/editorial_story.json
+            fabrica_free/mystery_report.json
+            fabrica_free/mystery_bible.json
+          retention-days: 3
+          if-no-files-found: warn
