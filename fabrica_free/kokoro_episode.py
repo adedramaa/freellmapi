@@ -61,8 +61,13 @@ def main():
     os.environ["REELS_RENDER_ENGINE"]="cycles"
     print("Sincronizando labios con Rhubarb y creando escena Blender",flush=True)
     engine.build(episode)
-    print("Renderizando Blender CPU",flush=True)
-    engine.render(episode.slug,"humo")
+    renderer=factory/"blender"/"render.py"
+    original=renderer.read_text(encoding="utf-8")
+    marker="scene.cycles.use_denoising = False"
+    if marker not in original: raise RuntimeError("No se encontró opción de denoise de La Fabrica")
+    renderer.write_text(original.replace(marker,"scene.cycles.use_denoising = True"),encoding="utf-8")
+    print("Renderizando Blender CPU en calidad draft con denoise (6 samples)",flush=True)
+    engine.render(episode.slug,"draft")
     final=engine.compose(episode.slug)
     out=Path(os.environ.get("GITHUB_WORKSPACE",Path.cwd()))/"fabrica_free"/"out"
     out.mkdir(parents=True,exist_ok=True)
