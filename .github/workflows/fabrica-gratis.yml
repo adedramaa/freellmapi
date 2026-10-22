@@ -52,7 +52,7 @@ jobs:
           set -euo pipefail
           test -n "$ANTHROPIC_AUTH_TOKEN" || { echo 'Unified FreeLLMAPI token absent'; exit 1; }
           npm install --global @anthropic-ai/claude-code@2.1.296
-          timeout 155 claude --bare -p 'Eres un guionista para un reel animado 3D. Devuelve UNICAMENTE JSON valido sin markdown: {"lines":["frase 1","frase 2"]}. Dos frases de 8 a 90 caracteres, español latinoamericano muy natural y divertido, ritmo rapido, un objeto simpatico explica que su voz y animacion 3D son gratuitas. No prometas viralidad. No ejecutes herramientas.'             --model "$ANTHROPIC_MODEL" --max-turns 2             --tools '' --permission-mode dontAsk --strict-mcp-config             --disable-slash-commands --no-session-persistence             --output-format text > "$RUNNER_TEMP/claude-lines.txt"
+          timeout 155 claude --bare -p 'Eres un guionista para un reel animado 3D. Devuelve UNICAMENTE JSON valido sin markdown: {"lines":["frase 1","frase 2"]}. Dos frases de 8 a 70 caracteres con MAXIMO 8 PALABRAS POR FRASE, español latinoamericano muy natural y divertido, ritmo rapido, un objeto simpatico explica que su voz y animacion 3D son gratuitas. No prometas viralidad. No ejecutes herramientas.'             --model "$ANTHROPIC_MODEL" --max-turns 2             --tools '' --permission-mode dontAsk --strict-mcp-config             --disable-slash-commands --no-session-persistence             --output-format text > "$RUNNER_TEMP/claude-lines.txt"
           test -s "$RUNNER_TEMP/claude-lines.txt"
 
       - name: Validate Claude output or record fallback
