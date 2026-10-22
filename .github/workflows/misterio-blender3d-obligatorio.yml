@@ -51,6 +51,7 @@ jobs:
           sudo apt-get install -y -qq blender ffmpeg fonts-dejavu-core
           blender --version | head -1
           ffmpeg -version | head -1
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 fabrica_free/audio/narrador_original_ep01.opus
 
       - name: Build and mechanically verify physical animated Blender set
         env:
