@@ -279,3 +279,20 @@ Creció 3 puntos sobre el 48% anterior gracias a una interfaz adicional en el pa
 **57% completo / 43% pendiente**, estimación de preparación operativa frente al objetivo total.
 Distribución: web/captación 20/20, CRM 11/15, presupuestos y acuerdos 12/15, cobros/fiscalidad 3/15, desarrollo 4/20, QA/entregas/monitoreo 7/10, ingresos 0/5 = **57/100**. 
 Se suman solo 2 puntos al 55% anterior por el exportador verificable y la preparación de QA con artefacto revisable. No se suma por ventas inexistentes ni por un trabajo real de Claude que no ocurrió.
+
+## Ronda 2026-10-23 23:40 UTC — seguridad de ejecución y auditoría del CI
+
+**Cambios efectivos**
+- Se ajustó `agencia.guard_work_order`: toda orden nueva debe empezar como `blocked`; no puede entrar en ejecución sin revisión fiscal, comprobación manual de repositorio privado, límite presupuestario y aprobación temporal de propietario.
+- Las condiciones aprobadas de repositorio, gasto, revisión fiscal y ejecución quedan inmutables una vez iniciada la planificación. Para ejecutar código en `plan_ready` o `building`, la autorización debe seguir vigente. En QA y entrega, una autorización vencida no bloquea por sí sola la revisión de un trabajo terminado.
+- Se añadieron las columnas `tax_reviewed_at` y `tax_reviewed_by` a `agencia.work_orders`, y se comprobó que el disparador actualizado está instalado. La versión restaurable quedó en `agencia-autonoma/sql/execution-approval-gate-2026-10-23.sql`.
+- **La verificación de estas modificaciones fue estructural (reglas y disparador consultados desde Neon).** La prueba transaccional integral no se completó: la operación de ensayo fue bloqueada. No atribuir a esta ronda un flujo comercial E2E validado.
+- Se desplegó temporalmente una suite `node:test` en Node 24 de Neon; su ejecución no respondió dentro del plazo. La función temporal `agenciasuiteqa` fue eliminada. No hubo un resultado PASS de esa suite; permanecen las **14/14 comprobaciones independientes reales de la ronda previa**.
+- El workflow de GitHub `.github/workflows/agencia-proof-ci.yml` continúa listo para ejecución manual desde Actions, pero sin corrida verde confirmada. Tampoco se ha ejecutado Claude Code.
+- La infraestructura no incorpora nuevos servicios de pago ni nuevas credenciales. Los cambios se limitaron a la rama de agencia, SQL y documentación. El sitio web anterior permanece publicado.
+
+**Estado y puntuación**
+- Referencia anterior: 59% preparado y 41% pendiente.
+- Nueva puntuación orientativa: **60% preparado y 40% pendiente**. El único punto extra refleja un refuerzo real de las barreras de inicio de trabajo, no QA E2E adicional, facturación ni ingresos.
+- Distribución: sitio y captación 20/20; panel 11/15; propuestas 12/15; cobros/fiscalidad 3/15; sistema de desarrollo 6/20; QA/entrega/monitoreo 8/10; ventas verificadas 0/5.
+- Sigue pendiente: acceso del propietario, GitHub privado y CI ejecutado, modelo Claude Code con credenciales y coste autorizados, integraciones externas de cobro/conciliación, facturación y ventas reales.
