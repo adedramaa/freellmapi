@@ -10,6 +10,12 @@ const CURRENCIES=new Set(['ARS','USD','EUR']);
 const SERVICES=new Set(['web','automatizacion','aplicacion','mantenimiento','otro']);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function validText(value,max){return typeof value==='string'&&value.trim().length>=12&&value.length<=max}
+function mayContainPrivateData(value){
+ if(typeof value!=='string')return false;
+ return /[\\w.+-]+@[\\w.-]+\\.[a-z]{2,}/i.test(value) ||
+  /\\b(?:api[_\\s-]?key|auth[_\\s-]?token|password|contraseña|client[_\\s-]?secret)\\s*[:=]\\s*[^\\s,;]{4,}/i.test(value) ||
+  /\\b(?:dni|cuit|passport|pasaporte|credit[_\\s-]?card|tarjeta)\\s*[:=#]?\\s*\\d{7,}/i.test(value);
+}
 export function assessHandoff(spec){
  const blockers=[];
  if(!spec||typeof spec!=='object'||Array.isArray(spec))return ['invalid_spec'];
@@ -25,6 +31,8 @@ export function assessHandoff(spec){
   blockers.push('invalid_delivery_window');
  if(!Number.isInteger(Number(spec.included_revisions))||Number(spec.included_revisions)<0||Number(spec.included_revisions)>8)
   blockers.push('invalid_revision_count');
+ if([spec.scope,spec.deliverables,spec.exclusions].some(mayContainPrivateData))
+  blockers.push('possible_private_data_requires_redaction');
  if(spec.payment_verified!==true)blockers.push('unverified_payment');
  if(spec.customer_text_untrusted!==true)blockers.push('missing_prompt_injection_boundary');
  if(spec.execution_authorized!==false)blockers.push('unsafe_execution_flag');
