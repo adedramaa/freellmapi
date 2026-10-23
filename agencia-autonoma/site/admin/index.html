@@ -124,7 +124,7 @@ function card(item){
   if(item.quote_stage==='enviado'&&item.status==='aprobado'){
     const group=element('section','card');group.style.marginTop='12px';group.style.marginBottom='0';
     group.append(element('strong','','Preparación técnica — todavía sin ejecución'));
-    group.append(element('p','hint','La especificación no comparte correo ni nombre del cliente. Claude Code NO será iniciado y el trabajo sigue bloqueado hasta verificar pago, facturación y repositorio privado.'));
+    group.append(element('p','hint','La ficha omite los campos directos de contacto, pero el alcance podría contener información personal. Revísalo y elimina datos sensibles antes de usar agentes. Claude Code NO se iniciará; sigue bloqueado hasta verificar pago, facturación y repositorio privado.'));
     const view=element('button','secondary','Ver especificación técnica');
     const details=element('div','details');details.hidden=true;details.style.marginTop='12px';
     view.addEventListener('click',async()=>{
