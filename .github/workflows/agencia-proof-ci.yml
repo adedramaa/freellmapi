@@ -21,7 +21,7 @@ jobs:
       - name: Checkout fixed agency review commit without GitHub credentials
         uses: actions/checkout@v4
         with:
-          ref: 6806a81c363aded77cbee630a57fddfb6d750f6f
+          ref: d22c628bb19f591a83e8c6dbe49882e00d076215
           persist-credentials: false
       - name: Confirm Node environment
         run: node --version
