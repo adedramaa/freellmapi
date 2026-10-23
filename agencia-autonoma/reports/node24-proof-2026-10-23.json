@@ -1,0 +1,38 @@
+{
+  "title": "Autónoma Dev: Node 24 temporary runtime proof",
+  "tested_at_utc": "2026-10-23T22:13:00Z",
+  "source_commit": "3a7837ba3f9b5a26f5b27ab394f197cec922a4d2",
+  "source_files": [
+    "agencia-autonoma/runner/compile-handoff.mjs",
+    "agencia-autonoma/runner/site-generator.mjs",
+    "agencia-autonoma/runner/build-preview.mjs"
+  ],
+  "execution_environment": "Neon Functions nodejs24 temporary agency test function",
+  "endpoint_deleted_after_test": true,
+  "checks": {
+    "four_files": true,
+    "15_quality_checks": true,
+    "not_real_client": true,
+    "not_real_payment": true,
+    "no_claude_run": true,
+    "no_external_assets": true,
+    "script_blocked": true,
+    "handler_blocked": true,
+    "iframe_blocked": true,
+    "css_url_blocked": true,
+    "data_url_blocked": true,
+    "export_and_verify": true,
+    "no_overwrite": true,
+    "detects_readme_tamper": true
+  },
+  "passed": 14,
+  "total": 14,
+  "filesystem": "Temporary file creation, SHA-256 verification, no-overwrite and tamper detection worked",
+  "input_data": "Only a fictional bakery landing page fixture",
+  "limitations": [
+    "This was an instrumented Node.js handler test, not execution of the full node --test suite.",
+    "It did not involve GitHub Actions or Claude Code, real customer data, billing or deployment of customer work.",
+    "Checks are a functional audit, not an independent penetration test or signature of package authenticity.",
+    "No new billing credentials or external financial integrations were used."
+  ]
+}
