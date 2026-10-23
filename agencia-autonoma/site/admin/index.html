@@ -80,9 +80,33 @@ function card(item){
   const copy=element('button','secondary','Copiar propuesta');copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(full);status('Propuesta copiada. Comprueba identidad, impuestos, método de pago y condiciones antes de enviarla.')}catch{status('No se pudo copiar; selecciona el texto de la propuesta.',true)}});
   const mail=element('button','secondary','Preparar correo de propuesta');mail.addEventListener('click',()=>{const uri='mailto:'+encodeURIComponent(item.email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(full);window.location.href=uri});
   buttons.append(copy,mail);approved.append(buttons);
+  if(item.quote_stage==='aprobado'&&item.status==='cotizado'){
+    const sent=element('button','secondary','Registrar propuesta enviada');
+    sent.addEventListener('click',async()=>{
+      const ref=window.prompt('Referencia comprobable del email enviado (ID, asunto+fecha o identificador). No incluyas contraseñas:');
+      if(ref===null)return;
+      if(ref.trim().length<8){status('Referencia demasiado corta; no se registró el envío.',true);return}
+      if(!confirm('¿Confirmas que YA enviaste esta propuesta al cliente por correo? Esta acción NO envía ningún email.'))return;
+      try{await call('/api/admin/quote/mark-sent','POST',{quote_id:item.quote_id,reference:ref.trim()});status('Envío manual registrado.');await load()}
+      catch(e){status('No se registró el envío: '+e.message,true)}
+    });
+    approved.append(sent);
+  }
+  if(item.quote_stage==='enviado'&&item.status==='cotizado'){
+    const accept=element('button','secondary','Registrar aceptación del cliente');
+    accept.addEventListener('click',async()=>{
+      const ref=window.prompt('Referencia de aceptación verificable (ID del email o del documento firmado). No incluyas contraseñas:');
+      if(ref===null)return;
+      if(ref.trim().length<8){status('Indica una referencia válida de al menos 8 caracteres.',true);return}
+      if(!confirm('¿Comprobaste que EL CLIENTE aceptó expresamente esta misma propuesta, importe y alcance? Registrar no cobra ni inicia trabajos.'))return;
+      try{await call('/api/admin/quote/accept','POST',{quote_id:item.quote_id,channel:'email',reference:ref.trim()});status('Aceptación registrada por el propietario. No equivale a un pago.');await load()}
+      catch(e){status('No se registró aceptación: '+e.message,true)}
+    });
+    approved.append(accept);
+  }
   if(item.payment_draft_id){
     approved.append(element('p','hint','Solicitud interna: '+item.payment_method+' · Estado '+item.payment_state+'. Este registro NO confirma una transferencia ni envía un cobro.'));
-  }else{
+  }else if(item.quote_stage==='enviado'&&item.status==='aprobado'){
     const provider=item.preferred_currency==='USD'?'arq_ach':item.preferred_currency==='EUR'?'arq_sepa':'mercadopago_ar';
     const method=element('p','hint','Método por estudiar: '+provider+'. Confirma que tu cuenta está habilitada y que puedes facturar antes de enviar instrucciones de cobro.');
     const prepare=element('button','secondary','Preparar solicitud interna de pago');
