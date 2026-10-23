@@ -14,7 +14,7 @@ const api="https://br-falling-night-b57zpkln-agenciaadmin.compute.c-7.us-east-2.
 const el=(id)=>document.getElementById(id);
 let leads=[],user=null;
 const status=(s,bad=false)=>{el('feedback').textContent=s;el('feedback').className='status '+(bad?'error':'good')};
-async function token(){const r=await auth.token();if(!r.data?.token)throw Error('Session expired');return r.data.token}
+async function token(){const jwt=await auth.getJWTToken();if(typeof jwt!=='string'||jwt.split('.').length!==3)throw Error('Sesión vencida; vuelve a iniciar sesión');return jwt}
 async function call(path,method='GET',data=null){
  const headers={Authorization:'Bearer '+await token()};if(data)headers['Content-Type']='application/json';
  const r=await fetch(api+path,{method,headers,body:data?JSON.stringify(data):null,signal:AbortSignal.timeout(14000)});
