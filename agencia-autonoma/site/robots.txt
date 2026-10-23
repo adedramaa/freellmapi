@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://autonoma-dev-agencia-v2.onrender.com/sitemap.xml
