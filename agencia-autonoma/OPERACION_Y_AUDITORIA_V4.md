@@ -255,3 +255,27 @@ Creció 3 puntos sobre el 48% anterior gracias a una interfaz adicional en el pa
 2. Proyecto privado realmente verificado por GitHub (no atestado), con Claude Code ejecutado y skills cargadas, límite de consumo y PR aprobado. Actualmente NO existe ese runner.
 3. Contabilidad y cobros reales en ARQ/Binance/Mercado Pago con pruebas independientes de ingreso y factura legal en Argentina; no marcar depósitos por capturas.
 4. Alertas confiables con panel cerrado, correo transaccional, copia de seguridad y repetición del circuito con una venta/entrega real.
+
+## Ronda de ejecución — 23/10/2026 ~21:50 UTC: exportador verificable y prueba de CI
+
+### Implementado
+- **Exportador reproducible de concepto sintético** `agencia-autonoma/runner/build-preview.mjs`: CLI Node.js sin dependencias externas. Modo `--demo --output /ruta/nueva` escribe `index.html`, `qa-report.json`, `manifest.json` y `README.md`. Modo `--verify /ruta` vuelve a comprobar el contenido y su huella SHA-256. Se niega a sobrescribir una carpeta preexistente.
+- La fuente del ejemplo se genera con `compileHandoff` y `generateStaticPreview`; nunca carga clientes reales ni llama a Claude, GitHub, Neon, pasarelas de pago o proveedores externos.
+- **Once comprobaciones de QA** para el HTML: doctype, viewport, noindex/nofollow, ausencia de scripts y dependencias externas, ausencia de formularios, marcado semántico, estilos de foco, media queries, tamaño razonable y carácter explícitamente ficticio.
+- **Nueve validaciones funcionales aisladas en runtime V8** efectuadas tras recuperar el código exacto de GitHub: salida de 4 archivos, validez del HTML, seguridad contra scripts/URLs, generación/verificación determinista, no sobrescritura y detección de modificaciones. IMPORTANTE: para simular almacenamiento y cálculo se usaron dobles de `fs` y `createHash`; esto NO equivale a haber ejecutado el CLI real bajo Node.js ni a haber firmado criptográficamente el paquete.
+- Pruebas Node.js propuestas y versionadas en `agencia-autonoma/runner/build-preview.test.mjs`, que incluyen `fs` real, integridad, XSS estático, no sobrescribir y error ante ruta relativa. Se añadieron al workflow `.github/workflows/agencia-autonoma-qa.yml`.
+- En GitHub Actions se añadió un job que, si GitHub ejecuta el workflow, generará un artefacto efímero de revisión con `node build-preview.mjs --demo` y lo verificará con `--verify`, subiendo el paquete como artifact de un día. Sin acciones de publicación ni permisos de escritura.
+- **No se ha confirmado una ejecución CI real.** Una comprobación a GitHub Actions encontró 0 runs para la rama `agencia-autonoma-infra`. GitHub indica que `workflow_dispatch` necesita el archivo del workflow en la rama predeterminada; este repo compartido tiene la rama principal `main` y agencia en rama secundaria. NO se alteró `main` ni se abrió un PR masivo inseguro.
+- La publicación web ya verificada `/demo/landing/` permanece independiente del exportador: se muestra solo como muestra ficticia. No hubo despliegue web adicional en esta ronda.
+- Registros Neon: 0 administradores activos, 0 leads comerciales reales, 0 solicitudes de pago y 0 órdenes de trabajo.
+
+### Riesgos y siguiente avance
+- El artefacto SHA-256 detecta alteraciones accidentales cuando el manifiesto se conserva; **no ofrece autenticidad criptográfica frente a un atacante capaz de modificar tanto el HTML como el manifiesto**. Falta firma/atestación externa e infraestructura CI ejecutada con permisos controlados.
+- El generador es determinista y limitado a demostraciones HTML; **Claude Code sigue sin ejecutarse para proyectos reales**. Nada de lo agregado envía email, cobra, crea repositorios ni despliega páginas de clientes.
+- Hace falta un repositorio privado separado, habilitar y confirmar CI en ese repositorio, credenciales aprobadas para Claude Code, límites de cuota/costo, pruebas reales y PR de revisión.
+- Alta del usuario propietario en Neon Auth y comprobación del panel con su identidad, alertas externas, pagos y facturación siguen bloqueando el negocio.
+
+### Puntuación de cierre
+**57% completo / 43% pendiente**, estimación de preparación operativa frente al objetivo total.
+Distribución: web/captación 20/20, CRM 11/15, presupuestos y acuerdos 12/15, cobros/fiscalidad 3/15, desarrollo 4/20, QA/entregas/monitoreo 7/10, ingresos 0/5 = **57/100**. 
+Se suman solo 2 puntos al 55% anterior por el exportador verificable y la preparación de QA con artefacto revisable. No se suma por ventas inexistentes ni por un trabajo real de Claude que no ocurrió.
