@@ -57,6 +57,11 @@ jobs:
           print('PASS: 3 plugins visuales, 1 protocolo, 1 banco de referencias y 3 subagentes.')
           PY
 
+      - name: Use Node.js 22 for Taste Skill
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
       - name: Verify free prerequisites
         shell: bash
         run: |
