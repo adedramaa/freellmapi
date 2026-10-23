@@ -111,3 +111,28 @@ La meta está en curso, **no terminada 100 %**. Esta bitácora impide que public
 ### Reestimación de avance al cierre de esta ronda
 
 **42 % operativo estimado / 58 % por completar.** Se concede una mejora pequeña (2 puntos) por subsanar método de autenticación y publicar preparación de propuesta comercial. Es una escala de avance ponderada y subjetiva, **no** porcentaje de calidad ni prueba de venta. Las tres compuertas imprescindibles continúan: dueño autenticado, cobro real/facturación, Claude Code independiente y entrega. No existe garantía de ingresos o costo cero ilimitado.
+
+## Auditoría incremental — 23/10/2026 18:28 UTC
+
+### Implementado y verificado en esta intervención
+- **Monitoreo programado autónomo de Neon:** función `agenciamonitor` desplegada en la branch exclusiva `br-falling-night-b57zpkln`; disparador `trigger-54bd27f4-fd91-4f72-a008-4c87acd4432e`, calendario UTC `0 * * * *`, activo. Respeta el apagado de compute de Neon. No ocupa cupos de tareas ChatGPT; sí consume cuota mensual de Neon.
+- El registro `agencia.monitor_snapshots` conserva cada hora fecha, web accesible, API saludable y número de consultas sin gestionar. No guarda correos ni nombres de clientes. Primera ejecución comprobada: `2026-10-23T18:25:02Z`, `website_ok=true`, `backend_ok=true`, `pending_leads=0`.
+- **Se reparó un falso negativo durante la prueba:** el monitor buscaba una palabra que no aparecía al comienzo de la página; se cambió por el título correcto, verificando después web/API ambos OK.
+- **Panel protegido:** añadido el estado del monitor (visible únicamente después de autenticar y autorizar al propietario). `agenciaadmin` versión activa 4 devuelve snapshot vía `GET /api/admin/metrics`, protegido por Neon JWT y lista autorizada.
+- **Chequeo de nuevas consultas con panel abierto:** se añadió lectura de métricas cada cinco minutos solamente mientras la pestaña esté visible y la sesión iniciada. **No es alerta push permanente ni correo de fondo**.
+- **Web publicada:** Render `srv-dbdn43m7bikc73e70420`, despliegue `dep-dbdqdsnf3r2c73bmvss0` estado `live` para cambios del panel. Validación local de sintaxis JavaScript `PASS`.
+- **Pruebas y datos reales:** 3 Neon Functions desplegadas: `agencialeads`, `agenciaadmin`, `agenciamonitor`. 0 administradores autorizados, 0 leads comerciales reales, 0 órdenes, 0 intentos de pago. Sin clientes ficticios sin descartar.
+- **Repositorio sigue compartido y público** (`adedramaa/freellmapi`); antes de programar proyectos de clientes, crear un repositorio privado independiente. No guardar secretos ni código privado del cliente en él.
+- Existe la tabla `agencia.lead_submission_locks`, pero el intento de integrarla al endpoint público fue rechazado por el entorno de herramientas. **No se debe afirmar que la protección de concurrencia está activa**; se mantienen controles de spam básicos anteriores.
+- Aun no se ha demostrado inicio de sesión de propietario en Android, emails de aviso, conciliación ARQ/MP/Binance, factura E, ni Claude Code produciendo software para cliente.
+
+### Porcentaje al cierre de esta ronda
+**44% estimado implementado; 56% restante**. Es una puntuación ponderada de preparación, no porcentaje medido de disponibilidad ni ganancias. Distribución: web y captación 18/20, panel/comercial 9/15, presupuestos 10/15, cobros/fiscalidad 2/15, Claude 1/20, QA/entrega/monitoreo 4/10, ingresos comprobados 0/5.
+
+### Siguientes compuertas reales
+1. Autorizar a un propietario real en Neon Auth para que el panel deje de estar bloqueado (no compartir contraseñas).
+2. Configurar correo transaccional o push opt-in legítimos para alertas incluso con el panel cerrado, con cuota gratuita verificada y protección de datos.
+3. Corregir y probar deduplicación concurrente y CAPTCHA/cota por dirección IP sin bloquear usuarios legítimos.
+4. Verificar y vincular medio de cobro aceptado para persona/empresa en Argentina y exterior; factura E y requisitos BCRA/ARCA.
+5. Runner de Claude Code con roles cargados de verdad, presupuesto de ejecución, repos privados y aprobación humana.
+6. Ejecución de una venta/producción/entrega real y seguimiento de costes.
