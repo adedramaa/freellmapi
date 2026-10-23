@@ -144,7 +144,6 @@ export default {
       if(txt.length>1200)return answer({error:'too_large'},413,cors);
       let payload;try{payload=JSON.parse(txt)}catch{return answer({error:'bad_json'},400,cors)}
       const quoteId=payload?.quote_id,provider=payload?.provider;
-      const rules={USD:['arq_ach'],EUR:['arq_sepa'],ARS:['mercadopago_ar']};
       if(typeof quoteId!=='string'||!/^[0-9a-f-]{36}$/i.test(quoteId)
          ||!['arq_ach','arq_sepa','mercadopago_ar'].includes(provider))
          return answer({error:'invalid_request'},400,cors);
@@ -159,7 +158,7 @@ export default {
           AND length(coalesce(q.scope_json->>'exclusiones',''))>=10
       ), ins AS (
         INSERT INTO agencia.payment_intents(lead_id,quote_id,provider,currency,amount_minor,state)
-        SELECT lead_id,id,$2,quote_currency,quote_amount_minor,'draft' FROM ready
+        SELECT lead_id,id,$2,quote_currency,quote_amount_minor,'draft' FROM ready WHERE true
         ON CONFLICT DO NOTHING
         RETURNING id,lead_id,provider,currency,amount_minor,state
       ), audit AS (
