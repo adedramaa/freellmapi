@@ -46,6 +46,8 @@ export default {
   }catch{return new Response(JSON.stringify({error:'bad_schedule'}),{status:400,headers:{'Content-Type':'application/json'}})}
   const slot=new Date(scheduled).toISOString().slice(0,13)+':00:00.000Z';
   const [web,api]=await Promise.all([ping(PAGE,'Autónoma Dev'),ping(HEALTH,'"database":"verified"')]);
+  // Avoid retaining hashed email anti-duplicate locks for longer than needed.
+  try{await sql("DELETE FROM agencia.lead_submission_locks WHERE last_submitted_at < now()-interval '24 hours'")}catch(e){console.error('lead_lock_cleanup',e?.name||'unknown')}
   try{
     const rows=await sql(`
        WITH counts AS (
