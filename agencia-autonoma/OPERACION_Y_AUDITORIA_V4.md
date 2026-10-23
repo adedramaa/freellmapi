@@ -162,3 +162,33 @@ La meta está en curso, **no terminada 100 %**. Esta bitácora impide que public
 **46% estimado completo, 54% restante**, ponderado por capacidad de recibir, procesar, cobrar, construir, probar y entregar un proyecto. Solo +2 puntos sobre la auditoría anterior de 44%: +1 por corrección de concurrencia probada vía HTTP y +1 por la preparación de pagos sin transacciones financieras. El monitor omitió una ventana prevista, por tanto no aumenta la puntuación de avisos confiables.
 
 **Próximos bloqueos en orden:** confirmar y autorizar identidad del titular; asegurarse de alertas fiables y backups; establecer modalidad fiscal y cobro habilitado; preparar runner Claude Code privado con límites de costo y skills realmente usadas; validar QA y primera entrega rentable.
+
+## Auditoría incremental — 23/10/2026 20:27 UTC: aceptación del cliente y resguardo de cobros
+
+### Pruebas e implementación terminada
+
+- Se añadió `agencia.client_acceptances` para registrar por presupuesto referencia de aceptación, canal, fecha, usuario autorizante, moneda e importe aceptados. Este es un **registro manual**, no reemplaza firma digital certificada ni prueba de cobro.
+- Las funciones PostgreSQL `agencia.mark_quote_sent_manual` y `agencia.register_client_acceptance` validan orden y evidencia, registran eventos y bloquean duplicados. El estado `leads.aprobado` ahora requiere propuesta en estado `enviado` y aceptación registrada con moneda e importe coincidentes.
+- La API administrativa `agenciaadmin` desplegada versión **6** dispone de `POST /api/admin/quote/mark-sent` y `POST /api/admin/quote/accept`, bajo JWT de Neon y `admin_users.active`. La ruta de preparación del pago también exige `lead.status='aprobado'`, propuesta enviada y aceptación.
+- El disparador `agencia.guard_payment_intent` aplica las restricciones incluso a inserciones SQL directas: no se puede preparar un pago para una propuesta no enviada, no aceptada o sin importe en la moneda acordada. Estado `verified` sigue requiriendo referencia y documento, **sin integración bancaria automática**.
+- **Prueba SQL reversible**: bloqueó un borrador de pago antes del envío, bloqueó otro tras el envío pero antes de la aceptación, permitió registrar manualmente aceptación válida y generar solo el borrador de pago. Todos los registros sintéticos revertidos: 0 aceptaciones, 0 pagos y 0 leads nuevos reales al final.
+- Nuevos pasos del panel móvil: marcar envío de propuesta con referencia, registrar aceptación del cliente con referencia y canal email, y solo después mostrar preparación del borrador de pago. El propietario debe confirmar expresamente ambos hechos: no se envía un email por sí solo.
+- Neon Auth compartido incluye proveedor Google; se añadió botón optativo de ingreso con Google. Se mantiene la lista de administradores vacía por defecto y **no se validó una sesión real de usuario desde Android**. Configuración de Neon Auth aún permite localhost y no exige verificación de email por contraseña: revisar antes de considerar acceso listo para producción.
+- **Publicación confirmada:** Render servicio `srv-dbdn43m7bikc73e70420`, despliegue `dep-dbds658ae00c73aqvhdg`, estado `live`, commit `8ee48e6ca3cd36da3e86e331bff2c1dc2764fa06`. Neon admin API versión 6 `completed`. Archivos JS pasan revisión de sintaxis. La consulta no autorizada directa a `/api/admin/leads` devolvió HTTP **403**, sin exponer datos.
+- Código de recuperación en `agencia-autonoma/sql/manual-client-acceptance-2026-10-23.sql` y `agencia-autonoma/sql/payment-evidence-guard-2026-10-23.sql` (no incluyen datos ni secretos).
+
+### Estado real y porcentaje
+
+Contadores Neon: **0 administradores activos, 0 consultas reales, 0 aceptaciones de cliente reales, 0 pagos, 0 órdenes de trabajo**. Las 3 Functions siguen activas y el cron horario sigue configurado; persiste la necesidad de validar alerta fiable mientras el panel está cerrado, y de revisar una ventana omitida de monitoreo.
+
+**Avance general estimado: 48% completo y 52% pendiente** frente al 46% previo. Dos puntos extra por un circuito de aprobación/aceptación y control de pagos mejor resuelto y probado, sin atribuir crecimiento comercial, cobros ni autonomía Claude Code que aún no existen. Distribución: web 19/20, panel 10/15, propuestas 11/15, cobros 3/15, Claude 1/20, QA/entregas/monitoreo 4/10, ingresos 0/5.
+
+### Bloqueos siguientes
+
+1. El titular debe registrar una cuenta propia en `/admin/` (Google opcional) y demostrar la identidad antes de insertar su UUID en `admin_users`; prohibido transmitir contraseñas en chat.
+2. Probar de verdad el panel autenticado en Android, recuperar un lead y ejecutar los tres pasos comerciales con cuenta dueña autorizada.
+3. Configurar autenticación de correo verificada, restricciones de origen para Neon Auth, protección anti-spam e historial de auditoría de cambios.
+4. Integrar mensajería transaccional/avisos cuando la pestaña esté cerrada, sin superar cuotas ni sustituir tareas existentes de ChatGPT.
+5. Validar ARQ personal/empresarial, MP y/o Binance Pay con titular, documentación, impuestos, factura E y conciliación externa. Nunca marcar pago solo por captura.
+6. Preparar repositorio privado por cliente y corredor seguro Claude Code que ejecute skills y pruebas reales, con aprobación humana y tope de consumo.
+7. Obtener clientes legítimos, medir costo y cerrar primera entrega verificable.
