@@ -59,3 +59,12 @@ test('keeps execution disabled regardless of injected policy fields',()=>{
  assert.equal(r.brief.boundaries.production_deploy,false);
  assert.equal(r.may_start,false);
 });
+
+test('rejects email identifiers in free-text handoff',()=>{
+ const s=sample();s.scope='Create a client portal and contact private.client@example.com directly.';
+ assert.ok(assessHandoff(s).includes('possible_private_data_requires_redaction'));
+});
+test('rejects secrets embedded in project requirements',()=>{
+ const s=sample();s.deliverables='Deploy with api_key=secretlivevalue123 immediately during build.';
+ assert.ok(assessHandoff(s).includes('possible_private_data_requires_redaction'));
+});
