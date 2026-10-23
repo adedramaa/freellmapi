@@ -1,9 +1,11 @@
--- Autónoma Dev: execution transition gate snapshot (2026-10-23).
--- A verified payment is necessary, but NOT enough to authorize agent execution.
--- Private repo checks here are MANUAL ATTESTATIONS, not independently checked GitHub API results.
--- Do not execute client jobs until GitHub-private scope, permissions and budget are externally verified.
+-- Execution state guard for Autónoma Dev: captured 2026-10-23 23:40 UTC.
+-- Restore on staging after the base agencia schema is installed.
+-- These fields record internal attestations, NOT independently verified repository privacy, legal compliance or bank settlement.
+-- Do not run Claude Code or spend money based on this SQL file alone.
 ALTER TABLE agencia.work_orders ADD COLUMN IF NOT EXISTS private_repo_checked_at timestamptz;
 ALTER TABLE agencia.work_orders ADD COLUMN IF NOT EXISTS private_repo_checked_by varchar(160);
+ALTER TABLE agencia.work_orders ADD COLUMN IF NOT EXISTS tax_reviewed_at timestamptz;
+ALTER TABLE agencia.work_orders ADD COLUMN IF NOT EXISTS tax_reviewed_by varchar(160);
 ALTER TABLE agencia.work_orders ADD COLUMN IF NOT EXISTS execution_approved_at timestamptz;
 ALTER TABLE agencia.work_orders ADD COLUMN IF NOT EXISTS execution_approved_by varchar(160);
 ALTER TABLE agencia.work_orders ADD COLUMN IF NOT EXISTS max_ai_cost_usd_cents integer CHECK(max_ai_cost_usd_cents IS NULL OR max_ai_cost_usd_cents>=0);
@@ -14,6 +16,7 @@ CREATE OR REPLACE FUNCTION agencia.guard_work_order()
 AS $function$
 DECLARE quote_rec record;
 BEGIN
+ IF TG_OP='INSERT' AND NEW.status<>'blocked' THEN RAISE EXCEPTION 'New work order must begin blocked'; END IF;
  SELECT src.lead_id,src.stage,src.quote_currency,src.quote_amount_minor INTO quote_rec
  FROM agencia.quote_drafts src WHERE src.id=NEW.quote_id;
  IF quote_rec.lead_id IS DISTINCT FROM NEW.lead_id OR quote_rec.stage <> 'enviado' THEN
@@ -41,12 +44,28 @@ BEGIN
  IF NEW.status IN ('plan_ready','building','qa_pending','qa_passed','ready_for_review','approved_for_delivery','delivered') THEN
  IF NEW.github_repo IS NULL OR NEW.github_repo !~ '^[A-Za-z0-9_.-]{1,90}/[A-Za-z0-9_.-]{1,100}$'
  OR NEW.private_repo_checked_at IS NULL OR NEW.private_repo_checked_by IS NULL
+ OR NEW.tax_reviewed_at IS NULL OR NEW.tax_reviewed_by IS NULL
  OR NEW.execution_approved_at IS NULL OR NEW.execution_approved_by IS NULL
  OR NEW.max_ai_cost_usd_cents IS NULL
- OR NEW.run_expiry_at IS NULL OR NEW.run_expiry_at<now()
+ OR NEW.run_expiry_at IS NULL
+ OR NEW.run_expiry_at<=NEW.execution_approved_at
  OR NEW.run_expiry_at>NEW.execution_approved_at+interval '24 hours'
  THEN RAISE EXCEPTION 'Private repository attestation, capped budget and expiring execution approval required'; END IF;
 END IF;
+IF NEW.status IN ('plan_ready','building') AND NEW.run_expiry_at<now()
+ THEN RAISE EXCEPTION 'Active execution requires unexpired owner authorization'; END IF;
+IF TG_OP='UPDATE'
+ AND OLD.status IN ('plan_ready','building','qa_pending','qa_passed','ready_for_review','approved_for_delivery')
+ AND (NEW.github_repo IS DISTINCT FROM OLD.github_repo
+   OR NEW.private_repo_checked_at IS DISTINCT FROM OLD.private_repo_checked_at
+   OR NEW.private_repo_checked_by IS DISTINCT FROM OLD.private_repo_checked_by
+   OR NEW.tax_reviewed_at IS DISTINCT FROM OLD.tax_reviewed_at
+   OR NEW.tax_reviewed_by IS DISTINCT FROM OLD.tax_reviewed_by
+   OR NEW.max_ai_cost_usd_cents IS DISTINCT FROM OLD.max_ai_cost_usd_cents
+   OR NEW.execution_approved_at IS DISTINCT FROM OLD.execution_approved_at
+   OR NEW.execution_approved_by IS DISTINCT FROM OLD.execution_approved_by
+   OR NEW.run_expiry_at IS DISTINCT FROM OLD.run_expiry_at)
+ THEN RAISE EXCEPTION 'Execution approval and spending cap immutable after start'; END IF;
 IF NEW.status IN ('qa_passed','ready_for_review','approved_for_delivery','delivered')
   AND (NEW.qa_verified_at IS NULL OR NEW.qa_result IS NULL OR NEW.qa_result='{}'::jsonb)
  THEN RAISE EXCEPTION 'QA evidence required'; END IF;
@@ -57,4 +76,4 @@ IF NEW.status IN ('qa_passed','ready_for_review','approved_for_delivery','delive
 END;
 $function$
 ;
--- Requires existing trigger agency_work_order_guard; CREATE OR REPLACE refreshes its function.
+-- Existing agency_work_order_guard trigger calls this replacement function.
