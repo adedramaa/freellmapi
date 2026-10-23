@@ -96,3 +96,18 @@ La meta está en curso, **no terminada 100 %**. Esta bitácora impide que public
 3. Cobros: tipo de ARQ Personal/Business, Binance Merchant si aplica, habilitación MP y obligaciones ARCA/BCRA, verificación independiente de transacciones.
 4. Runner Claude Code aislado y autorizado con 9 skills realmente cargadas, tests y PR, sin permitir despliegues autónomos no aprobados.
 5. Avisos de leads: 5/5 automations del usuario ocupadas; configurar alternativa autorizada sin sustituir recordatorios ajenos. Servicio de email verificado.
+
+## Ronda de ejecución — 23/10/2026 17:55 UTC
+
+- **Corregida compatibilidad de Neon Auth:** el panel anterior llamaba `auth.getJWTToken()` (no compatible con el cliente `createAuthClient`). Ahora utiliza `auth.token()` con `fetchOptions.credentials='include'`, de acuerdo con la guía oficial de Managed Better Auth. Limitación: cookies de terceros pueden estar bloqueadas en ciertos navegadores; no se ha verificado sesión real del dueño en Android.
+- **Cotización lista para revisar y enviar manualmente:** tras aprobación interna se prepara una propuesta bilingüe con monto, moneda, alcance, entregables, exclusiones, días y revisiones, con copiado o borrador de email manual. No se manda nada automáticamente.
+- **Deploy Render comprobado:** servicio web `srv-dbdn43m7bikc73e70420` despliegue `dep-dbdpuvt9fdbs7388tabg` estado `live`, commit `c948a30433b39e0257bb2c3c8d1e124365d7c76d`.
+- **Seguridad funcional:** scripts del panel analizados por sintaxis; comprobado `auth.token()` y `credentials:'include'` en fuente publicada. Los ensayos previos de 12/12 casos con objetos simulados no sustituyen un test de sesión autenticada.
+- **Antispam concurrente:** preparada tabla `agencia.lead_submission_locks` para futuro control de repetición por correo sin texto en claro; **no está conectada a la API aún**, por tanto no atribuirle protección efectiva.
+- **Notificaciones:** intento de configurar alerta mientras panel abierto no se integró y sigue pendiente; no hay avisos push o email automáticos.
+- **Estado último Neon:** cero administradores activos, cero leads comerciales reales, cero solicitudes de pago y cero órdenes. Dos Neon Functions activas (`agenciaadmin`, `agencialeads`).
+- **CI de GitHub:** no existen ejecuciones validadas del workflow dedicado a agencia. No se ha entregado proyecto hecho por Claude Code bajo este flujo.
+
+### Reestimación de avance al cierre de esta ronda
+
+**42 % operativo estimado / 58 % por completar.** Se concede una mejora pequeña (2 puntos) por subsanar método de autenticación y publicar preparación de propuesta comercial. Es una escala de avance ponderada y subjetiva, **no** porcentaje de calidad ni prueba de venta. Las tres compuertas imprescindibles continúan: dueño autenticado, cobro real/facturación, Claude Code independiente y entrega. No existe garantía de ingresos o costo cero ilimitado.
