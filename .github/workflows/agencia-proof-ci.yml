@@ -2,6 +2,7 @@
 # No paid AI, no external credentials, no customer records, no repo writes.
 name: Agencia Autonoma - Node proof (read-only)
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
