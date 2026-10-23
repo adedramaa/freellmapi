@@ -14,7 +14,9 @@
 - Despliegue Neon Functions #1 `completed`.
 - GET HTTPS `/health` real respondió: `{"ok":true,"service":"autonoma-dev-intake","database":"configured"}`.
 - Código del backend recibido por herramienta GitHub, empaquetado sin dependencias externas y desplegado mediante API Neon.
-- **Todavía NO se ha probado POST real a Neon**; no confundir GET de health con persistencia ni conectar frontend hasta probar el circuito.
+- GET HTTPS `/health` ahora ejecuta `SELECT count(*) FROM agencia.leads` antes de responder. Prueba real verificada: `{"ok":true,"service":"autonoma-dev-intake","database":"verified"}`.
+- Segundo trigger de Postgres `agencia_lead_lifecycle_before_update`: transiciones de estados permitidas, exige presupuesto aprobado y pago verificado antes de producción. Confirmado por instalación, pendiente prueba de transición funcional.
+- **Todavía NO se ha probado POST real a Neon**; no confundir consulta de health con registro de un lead ni conectar frontend hasta probar el circuito.
 
 ## Pendientes prioritarios con dependencias
 1. Integración frontal: probar POST /api/lead desde origen permitido, validar registro+evento+borrador en Neon y cotejar con resultados; habilitar Turnstile antiabuso y política de retención.
