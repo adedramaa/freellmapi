@@ -22,6 +22,8 @@ jobs:
           persist-credentials: false
       - name: Verify agency unit tests without credentials
         run: node --test agencia-autonoma/tests/*.test.mjs
+      - name: Validate isolated agent handoff without calling AI or payment providers
+        run: node --test agencia-autonoma/runner/*.test.mjs
       - name: Validate agency-only skill metadata and preserved original skills
         run: |
           python3 - <<'PY'
