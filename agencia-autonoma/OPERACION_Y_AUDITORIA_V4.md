@@ -224,3 +224,34 @@ Creció 3 puntos sobre el 48% anterior gracias a una interfaz adicional en el pa
 2. Repo privado separado, credenciales para Claude Code apropiadas y ejecución autorizada con límites de herramientas/costo, skills cargadas, PR y pruebas.
 3. Cobro internacional legítimo, conciliación verificable, cumplimiento ARCA/BCRA y factura correspondiente.
 4. Envío de propuesta y comunicaciones legalmente consistentes; soporte, backups, reversión y entrega demostrada.
+
+## Auditoría incremental — 23/10/2026 ~21:30 UTC: contratos inmutables, control de ejecución y ejemplo real de generación estática
+
+### Cambios instalados y comprobados
+- **Contrato congelado tras envío:** `agencia.guard_quote_contract` bloquea cambios directos de precio, moneda, alcance o estado de una propuesta `enviado` y su eliminación accidental. Las propuestas `aprobado` requieren precio, moneda y alcance completos; al enviar se registra `sent_at`. Esta protección complementa, pero no reemplaza, una firma o un acuerdo externo.
+- **Aceptación append-only:** `agencia.guard_client_acceptance` impide registrar una aceptación antes del envío, o con importe/moneda distintos; tras su creación no permite ediciones ni borrados ordinarios. Necesita política de retención y procedimientos excepcionales para derechos de eliminación de datos de clientes.
+- La **prueba SQL reversible** verificó: aceptación prematura rechazada, mutación de precio enviado rechazada, mutación de alcance rechazada, aceptación posterior válida, modificación de la aceptación rechazada, borrado de aceptación rechazado y borrado del presupuesto enviado rechazado. Transacción revertida: 0 registros comerciales nuevos.
+- En `agencia.work_orders` se añadieron `private_repo_checked_at`, `private_repo_checked_by`, `execution_approved_at`, `execution_approved_by`, `max_ai_cost_usd_cents` y `run_expiry_at`. `guard_work_order` exige esos datos para salir del estado bloqueado, verifica formato owner/repo, cap de gasto y autorización limitada a 24 horas; exige cotización efectivamente enviada.
+- **Prueba reversible de ejecución:** no permitió avanzar de `blocked` a `plan_ready` sin aprobación y revisión de repositorio; lo permitió tras atestaciones sintéticas y tope de costo 0, y volvió a rechazar `building` con autorización vencida. Las verificaciones de privacidad del repo son atestaciones humanas, **no comprobaciones externas de la API de GitHub**. Se revirtió toda la prueba: 0 órdenes y 0 administradores sintéticos persistentes.
+- Resguardos SQL versionados en `agencia-autonoma/sql/immutable-accepted-contract-2026-10-23.sql` y `agencia-autonoma/sql/execution-approval-gate-2026-10-23.sql` (no contienen secretos).
+- **Generador independiente de página estática:** `runner/site-generator.mjs` crea un ejemplo HTML autocontenido, móvil, accesible básico y con HTML escapado, desde un handoff validado. No utiliza Claude Code, GitHub Actions ni APIs pagas. Registra `published:false` por defecto y no autoriza entregas. Pruebas de integración V8 8/8 y un conjunto de 6 tests Node en `runner/site-generator.test.mjs`; la ejecución automática de estos tests en GitHub Actions **sigue sin estar verificada**.
+- **Demo pública y honesta:** HTML generado desde una especificación sintética, publicado como **ejemplo ficticio** bajo `https://autonoma-dev-agencia-v2.onrender.com/demo/landing/`. Enlazado desde la web ES y EN. El usuario puede inspeccionar una página de muestra; no debe publicitarse como trabajo para un cliente real ni como ejecución de Claude Code.
+- Render desplegó y sirve la demo, páginas ES/EN y la API pública sigue reportando salud; el último despliegue manual del servicio tiene ID `dep-dbdt6com7kps73bk6q4g`. Comprobar su estado final; la demo sí respondió correctamente en verificación HTTP.
+- GitHub Actions QA de la rama de agencia **sin ejecución validada**. El intento de crear una rama de integración para un PR aislado no pudo completarse. No se realizaron cambios directos en `main` ni se activó el puente Claude de otros proyectos. El repositorio temporal sigue siendo público y no se guardó código de clientes.
+- Estado Neon comprobado en esta ronda: **0 administradores autorizados, 0 leads comerciales, 0 pagos, 0 órdenes**. Último snapshot del monitor observado 21:00 UTC, sitio/API saludables.
+
+### Avance ponderado de fin de ronda
+**55% estimado completado; 45% pendiente** (51% anterior, +4 puntos orientativos, no métrica de ventas).
+- Web y captación: **20/20** — incluye nueva muestra ficticia de servicio.
+- CRM privado: **11/15** — faltan cuenta dueña, credenciales y sesión autenticada móvil verificadas.
+- Presupuestos y acuerdos: **12/15** — inmutabilidad de contrato e integridad de evidencia.
+- Cobros/facturación: **3/15** — solo borradores, ninguna conciliación bancaria, factura ni impuesto validado.
+- Programación/ejecución autónoma: **3/20** — especificador, puertas de seguridad y página básica determinista; **Claude Code aún no ejecutado**.
+- QA, entregas y monitoreo: **6/10** — pruebas y controles efectivos, pero no CI real ni entrega comercial.
+- Clientes e ingresos comprobados: **0/5** — ninguna venta demostrada.
+
+### Cuatro impedimentos que determinan los siguientes incrementos
+1. Alta y verificación de propietario real en Neon Auth, y comprobar que puede acceder al panel desde Android. Sin autorización nadie puede operar flujos comerciales.
+2. Proyecto privado realmente verificado por GitHub (no atestado), con Claude Code ejecutado y skills cargadas, límite de consumo y PR aprobado. Actualmente NO existe ese runner.
+3. Contabilidad y cobros reales en ARQ/Binance/Mercado Pago con pruebas independientes de ingreso y factura legal en Argentina; no marcar depósitos por capturas.
+4. Alertas confiables con panel cerrado, correo transaccional, copia de seguridad y repetición del circuito con una venta/entrega real.
