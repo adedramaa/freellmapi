@@ -136,3 +136,29 @@ La meta está en curso, **no terminada 100 %**. Esta bitácora impide que public
 4. Verificar y vincular medio de cobro aceptado para persona/empresa en Argentina y exterior; factura E y requisitos BCRA/ARCA.
 5. Runner de Claude Code con roles cargados de verdad, presupuesto de ejecución, repos privados y aprobación humana.
 6. Ejecución de una venta/producción/entrega real y seguimiento de costes.
+
+## Ronda 23 de octubre de 2026, aproximadamente 20:15 UTC — control de concurrencia y cobros preliminares
+
+### Cambios comprobados
+- **Deduplicación real en Neon**: `agencialeads` despliegue **5** activo. La recepción usa `agencia.lead_submission_locks` para bloquear por hash SHA-256 del correo durante quince minutos con `INSERT ... ON CONFLICT ... WHERE`. Conserva también el límite general de solicitudes. El hash no equivale a anonimización irreversible; controlar acceso y retención.
+- **Prueba de concurrencia HTTP**: una función temporal `agenciaprobe` lanzó dos `POST /api/lead` simultáneos para el mismo correo sintético. Resultados exactos: **201 y 429**; una sola `agencia.quote_drafts` creada. El registro fue marcado `integration_test/descartado`, se borró la fila de bloqueo de la prueba y se eliminó la función temporal. No atribuir como cliente real.
+- **Limpieza periódica**: la función `agenciamonitor` despliegue **3** tiene código para purgar hashes antiguos tras 24 horas. Su siguiente ejecución pendiente no fue verificada aún con una muestra expirada.
+- **Borrador de solicitud de pago**: se agregó `POST /api/admin/payment/prepare` a `agenciaadmin` despliegue **5**, protegido por JWT y lista explícita de administrador. Permite solo crear un registro `draft` para un presupuesto aprobado y completo; USD→`arq_ach`, EUR→`arq_sepa`, ARS→`mercadopago_ar`. Índice parcial único impide más de un borrador de pago activo por presupuesto.
+- **Prueba PostgreSQL reversible**: un presupuesto sintético con importe y alcance permitió **un** borrador de pago, bloqueó el intento duplicado y no creó un pago `verified`. La prueba se revirtió: cero leads y cero pagos sintéticos persistentes. No hubo llamadas bancarias ni validación externa de ARQ/MP.
+- **Panel privado**: código actualizado permite al titular preparar un borrador interno de pago (solo después de aprobación), mostrando advertencias de elegibilidad fiscal y ausencia de cobro. Render despliegue `dep-dbdrvlt9fdbs738ff2t0` estado `live`, commit `4ea40904e14ec896421683c57e123aa9155c2d67`. Neon `agenciaadmin` despliegue 5 activo.
+- **Salud pública**: GET `/health` devuelve `ok=true,database=verified`, página /en/ y /admin/ accesibles.
+- **Recuperación**: esquema auxiliar guardado en `agencia-autonoma/sql/security-and-draft-schema-2026-10-23.sql`. El script NO es un backup completo ni sustituye el esquema principal.
+
+### Límites aún abiertos
+- **Neon cron programado no equivale a alerta garantizada:** hay snapshot correcto de web y backend a **19:00 UTC**, pero no se observó ejecución a **20:00 UTC** aunque el disparador indica siguiente ejecución 21:00 UTC. Investigar posibles omisiones de programación y añadir supervisión redundante antes de prometer avisos de fondo. El monitor no envía emails ni push.
+- No hay propietarios activos en `agencia.admin_users`; no se pudo verificar login real, apertura de CRM, ni los nuevos controles con una sesión real desde Android.
+- No hay ningún cliente real ni ingresos; ARQ, Binance, Mercado Pago, contabilidad y factura E no están conectados o verificados.
+- El ejecutor Claude Code con nueve skills y repositorio aislado privado no está validado. La base GitHub sigue siendo compartida y pública; no subir proyectos privados de clientes.
+- La API de formularios aún requiere protección contra abuso de múltiples correos, control por IP o CAPTCHA y revisiones de privacidad.
+- El asistente no ha comprobado GitHub Actions CI ejecutando el workflow de la agencia.
+
+### Evaluación operativa y nueva prioridad
+
+**46% estimado completo, 54% restante**, ponderado por capacidad de recibir, procesar, cobrar, construir, probar y entregar un proyecto. Solo +2 puntos sobre la auditoría anterior de 44%: +1 por corrección de concurrencia probada vía HTTP y +1 por la preparación de pagos sin transacciones financieras. El monitor omitió una ventana prevista, por tanto no aumenta la puntuación de avisos confiables.
+
+**Próximos bloqueos en orden:** confirmar y autorizar identidad del titular; asegurarse de alertas fiables y backups; establecer modalidad fiscal y cobro habilitado; preparar runner Claude Code privado con límites de costo y skills realmente usadas; validar QA y primera entrega rentable.
