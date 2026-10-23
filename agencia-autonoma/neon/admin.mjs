@@ -138,6 +138,31 @@ export default {
       ) SELECT id::text,stage FROM upd`,[v.id,v.currency,String(amount),v.stage,user,scope,deliverables,exclusions,days,revisions]);
       return rows.length?answer({ok:true,stage:rows[0].stage},200,cors):answer({error:'quote_review_denied'},409,cors);
     }
+    if(request.method==='POST'&&url.pathname==='/api/admin/quote/mark-sent'){
+      const raw=await request.text();if(raw.length>1500)return answer({error:'too_large'},413,cors);
+      let v;try{v=JSON.parse(raw)}catch{return answer({error:'bad_json'},400,cors)}
+      if(!/^[0-9a-f-]{36}$/i.test(v?.quote_id||'')||
+          typeof v?.reference!=='string'||v.reference.trim().length<8||v.reference.length>190)
+        return answer({error:'reference_required'},400,cors);
+      const rows=await sql('SELECT agencia.mark_quote_sent_manual($1::uuid,$2::text,$3::text) AS recorded',
+        [v.quote_id,user,v.reference.trim()]);
+      return rows[0]?.recorded === true||rows[0]?.recorded === 't'
+        ?answer({ok:true,stage:'enviado',actual_delivery:'manual_attestation'},200,cors)
+        :answer({error:'quote_not_eligible'},409,cors);
+    }
+    if(request.method==='POST'&&url.pathname==='/api/admin/quote/accept'){
+      const raw=await request.text();if(raw.length>1500)return answer({error:'too_large'},413,cors);
+      let v;try{v=JSON.parse(raw)}catch{return answer({error:'bad_json'},400,cors)}
+      if(!/^[0-9a-f-]{36}$/i.test(v?.quote_id||'')||
+         !['email','signed_document','client_portal'].includes(v?.channel)||
+         typeof v?.reference!=='string'||v.reference.trim().length<8||v.reference.length>190)
+         return answer({error:'acceptance_evidence_required'},400,cors);
+      const rows=await sql('SELECT agencia.register_client_acceptance($1::uuid,$2::text,$3::text,$4::text) AS recorded',
+        [v.quote_id,user,v.channel,v.reference.trim()]);
+      return rows[0]?.recorded === true||rows[0]?.recorded === 't'
+        ?answer({ok:true,lead_status:'aprobado',recorded_by_owner:true},200,cors)
+        :answer({error:'not_eligible_or_already_accepted'},409,cors);
+    }
     // This creates only a local draft, NEVER a payment or a provider request.
     if(request.method==='POST'&&url.pathname==='/api/admin/payment/prepare'){
       const txt=await request.text();
@@ -150,9 +175,10 @@ export default {
       const rows=await sql(`WITH ready AS (
         SELECT q.id,q.lead_id,q.quote_currency,q.quote_amount_minor
         FROM agencia.quote_drafts q JOIN agencia.leads l ON l.id=q.lead_id
-        WHERE q.id=$1::uuid AND q.stage='aprobado' AND q.quote_amount_minor>0
+        WHERE q.id=$1::uuid AND q.stage='enviado' AND q.sent_at IS NOT NULL AND q.quote_amount_minor>0
           AND q.quote_currency=CASE $2 WHEN 'arq_ach' THEN 'USD' WHEN 'arq_sepa' THEN 'EUR' ELSE 'ARS' END
-          AND l.source='neon-web'
+          AND l.source='neon-web' AND l.status='aprobado'
+          AND EXISTS(SELECT 1 FROM agencia.client_acceptances acc WHERE acc.quote_id=q.id AND acc.lead_id=q.lead_id AND acc.quote_currency=q.quote_currency AND acc.quote_amount_minor=q.quote_amount_minor)
           AND length(coalesce(q.scope_json->>'alcance_acordado',''))>=25
           AND length(coalesce(q.scope_json->>'entregables',''))>=20
           AND length(coalesce(q.scope_json->>'exclusiones',''))>=10
