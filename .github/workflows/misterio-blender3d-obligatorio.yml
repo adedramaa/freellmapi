@@ -42,16 +42,46 @@ jobs:
           fi
           echo "Blender 3D and preserved narrator required" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Install free Blender and FFmpeg on GitHub Actions CPU
+      - name: Install portable Blender and FFmpeg without apt
         shell: bash
-        timeout-minutes: 20
+        timeout-minutes: 13
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq blender ffmpeg fonts-dejavu-core
-          blender --version | head -1
-          ffmpeg -version | head -1
-          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 fabrica_free/audio/narrador_original_ep01.opus
+          mkdir -p "$RUNNER_TEMP/portable"
+          BLENDER_ARCHIVE="$RUNNER_TEMP/portable/blender.tar.xz"
+          echo "Download official Blender 5.2.2 (portable, no apt package index)"
+          curl -fSL --retry 2 --connect-timeout 20 --max-time 480 --progress-bar \
+            "https://download.blender.org/release/Blender5.2/blender-5.2.2-linux-x64.tar.xz" \
+            -o "$BLENDER_ARCHIVE"
+          echo "84098912789dc450e95697c4184fb8a90acbe5111c2ba4aede3fecb57806a168  $BLENDER_ARCHIVE" | sha256sum -c -
+          tar -xJf "$BLENDER_ARCHIVE" -C "$RUNNER_TEMP/portable"
+          rm -f "$BLENDER_ARCHIVE"
+          BLENDER_BIN="$RUNNER_TEMP/portable/blender-5.2.2-linux-x64/blender"
+          test -x "$BLENDER_BIN"
+          ln -s "$BLENDER_BIN" "$RUNNER_TEMP/portable/blender"
+          echo "$RUNNER_TEMP/portable" >> "$GITHUB_PATH"
+          "$BLENDER_BIN" -b --factory-startup --version | head -n 1
+          echo "Download portable FFmpeg + FFprobe (original factory build)"
+          FFMPEG_ARCHIVE="$RUNNER_TEMP/portable/ffmpeg.tar.xz"
+          FFMPEG_FILE="ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz"
+          FFMPEG_BASE="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest"
+          curl -fSL --retry 2 --connect-timeout 20 --max-time 240 --progress-bar \
+            "$FFMPEG_BASE/$FFMPEG_FILE" -o "$FFMPEG_ARCHIVE"
+          curl -fSL --retry 2 --connect-timeout 20 --max-time 35 \
+            "$FFMPEG_BASE/checksums.sha256" -o "$RUNNER_TEMP/portable/ffmpeg-checksums.sha256"
+          EXPECTED="$(grep -F "$FFMPEG_FILE" "$RUNNER_TEMP/portable/ffmpeg-checksums.sha256" | head -1 | awk '{print $1}')"
+          test -n "$EXPECTED"
+          printf '%s  %s\n' "$EXPECTED" "$FFMPEG_ARCHIVE" | sha256sum -c -
+          tar -xJf "$FFMPEG_ARCHIVE" -C "$RUNNER_TEMP/portable"
+          rm -f "$FFMPEG_ARCHIVE"
+          FFMPEG_PATH="$RUNNER_TEMP/portable/ffmpeg-n9.0-latest-linux64-gpl-9.0/bin"
+          test -x "$FFMPEG_PATH/ffmpeg"
+          test -x "$FFMPEG_PATH/ffprobe"
+          ln -s "$FFMPEG_PATH/ffmpeg" "$RUNNER_TEMP/portable/ffmpeg"
+          ln -s "$FFMPEG_PATH/ffprobe" "$RUNNER_TEMP/portable/ffprobe"
+          "$FFMPEG_PATH/ffmpeg" -hide_banner -version | head -n 1
+          "$FFMPEG_PATH/ffprobe" -v error -show_entries format=duration -of default=nw=1:nk=1 \
+            fabrica_free/audio/narrador_original_ep01.opus
 
       - name: Build and mechanically verify physical animated Blender set
         env:
