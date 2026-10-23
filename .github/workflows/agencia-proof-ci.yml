@@ -1,0 +1,41 @@
+# Safe, one-off agency verification. Only this workflow file can trigger this job.
+# No paid AI, no external credentials, no customer records, no repo writes.
+name: Agencia Autonoma - Node proof (read-only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/agencia-proof-ci.yml'
+permissions:
+  contents: read
+concurrency:
+  group: agencia-proof-readonly
+  cancel-in-progress: false
+jobs:
+  validate-agency:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Checkout fixed agency review commit without GitHub credentials
+        uses: actions/checkout@v4
+        with:
+          ref: 6806a81c363aded77cbee630a57fddfb6d750f6f
+          persist-credentials: false
+      - name: Confirm Node environment
+        run: node --version
+      - name: Execute exact agency test suite in Node
+        run: node --test agencia-autonoma/tests/*.test.mjs agencia-autonoma/runner/*.test.mjs
+      - name: Generate synthetic unpublishable website from Node
+        shell: bash
+        run: |
+          set -euo pipefail
+          node agencia-autonoma/runner/build-preview.mjs --demo --output "$RUNNER_TEMP/agency-proof-demo"
+          node agencia-autonoma/runner/build-preview.mjs --verify "$RUNNER_TEMP/agency-proof-demo"
+      - name: Archive only synthetic review artifact (1 day)
+        uses: actions/upload-artifact@v4
+        with:
+          name: agency-fictional-node-demo
+          path: ${{ runner.temp }}/agency-proof-demo/
+          retention-days: 1
+          if-no-files-found: error
