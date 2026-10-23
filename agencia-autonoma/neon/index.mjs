@@ -12,6 +12,9 @@ const SERVICES = {
   otro: { label:'Diagnóstico',min:null,max:null },
 };
 const BUDGETS = new Set(['no_definido','hasta_150k','150k_500k','mas_500k']);
+const CURRENCIES = new Set(['ARS','USD','EUR']);
+const LANGS = new Set(['es','en']);
+const GLOBAL_BUDGETS = new Set(['','unknown','lt_500','500_1500','1500_5000','gt_5000']);
 const HEADERS = { 'content-type':'application/json; charset=utf-8','cache-control':'no-store' };
 const respond = (v,status,extra={}) => new Response(JSON.stringify(v),{status,headers:{...HEADERS,...extra}});
 const clean = (v,max) => typeof v==='string' ? v.trim().slice(0,max+1) : '';
@@ -46,9 +49,11 @@ function assess(input) {
   if(/\b(paciente|diagn[oó]stico|historia cl[ií]nica|ni[ñn]os|biom[eé]tricos)\b/i.test(input.details)) flags.push('datos_sensibles');
   if(/\b(spam|scraping masivo|correo masivo|bases de datos compradas)\b/i.test(input.details)) flags.push('riesgo_abuso');
   const selected=SERVICES[input.service];
-  if(input.budget==='hasta_150k' && selected.min>150000) flags.push('presupuesto_inferior_al_rango');
-  const score=Math.max(10,Math.min(90,45+(input.business?10:0)+(input.budget!=='no_definido'?10:0)+(input.details.length>140?10:0)-flags.length*8));
-  return {score,flags,min:selected.min,max:selected.max};
+  if(input.currency==='ARS' && input.budget==='hasta_150k' && selected.min>150000) flags.push('presupuesto_inferior_al_rango');
+  const hasBudget = input.currency==='ARS' ? input.budget!=='no_definido' : Boolean(input.global_budget && input.global_budget!=='unknown');
+  const score=Math.max(10,Math.min(90,45+(input.business?10:0)+(hasBudget?10:0)+(input.details.length>140?10:0)-flags.length*8));
+  // Never reuse ARS estimates as USD/EUR quoted prices.
+  return {score,flags,min:input.currency==='ARS'?selected.min:null,max:input.currency==='ARS'?selected.max:null};
 }
 function parse(data) {
   if(!data||typeof data!=='object'||Array.isArray(data))return null;
@@ -56,10 +61,16 @@ function parse(data) {
     name:clean(data.name,90), email:clean(data.email,200).toLowerCase(),
     business:clean(data.business??'',120), service:clean(data.service,40),
     budget:clean(data.budget,40), details:clean(data.details,2500),
-    honey:clean(data.honey??'',200), consent:data.consent===true
+    honey:clean(data.honey??'',200), consent:data.consent===true,
+    country:clean(data.country??'',2).toUpperCase(),
+    currency:clean(data.currency??'ARS',3).toUpperCase(),
+    language:clean(data.language??'es',2).toLowerCase(),
+    global_budget:clean(data.global_budget??'',24)
   };
   if(v.name.length<2||!EMAIL.test(v.email)||v.email.length>200||v.business.length>120
-    ||v.details.length<20||v.details.length>2500||!SERVICES[v.service]||!BUDGETS.has(v.budget)||!v.consent)return null;
+    ||v.details.length<20||v.details.length>2500||!SERVICES[v.service]||!BUDGETS.has(v.budget)||!v.consent
+    ||!CURRENCIES.has(v.currency)||!LANGS.has(v.language)||!GLOBAL_BUDGETS.has(v.global_budget)
+    ||(v.country!==''&&!/^[A-Z]{2}$/.test(v.country))||(v.currency==='ARS'&&v.global_budget!==''))return null;
   return v;
 }
 export default {
@@ -102,8 +113,8 @@ export default {
         ) AS permitted
       ),
       inserted AS (
-        INSERT INTO agencia.leads(name,email,business,service,budget,details,consent_at,score,risk_flags,estimate_min_ars,estimate_max_ars,source)
-        SELECT $1,$2,$3,$4,$5,$6,now(),$7::smallint,$8::jsonb,$9::integer,$10::integer,'neon-web'
+        INSERT INTO agencia.leads(name,email,business,service,budget,details,consent_at,score,risk_flags,estimate_min_ars,estimate_max_ars,source,client_country,preferred_currency,preferred_language,budget_range_global)
+        SELECT $1,$2,$3,$4,$5,$6,now(),$7::smallint,$8::jsonb,$9::integer,$10::integer,'neon-web',$11,$12,$13,$14
         FROM gate WHERE permitted
         RETURNING id
       ),
@@ -114,7 +125,7 @@ export default {
         RETURNING id
       )
       SELECT id::text FROM inserted
-    `,[input.name,input.email,input.business||null,input.service,input.budget,input.details,t.score,JSON.stringify(t.flags),t.min,t.max]);
+    `,[input.name,input.email,input.business||null,input.service,input.budget,input.details,t.score,JSON.stringify(t.flags),t.min,t.max,input.country||null,input.currency,input.language,input.global_budget||null]);
     if(rows.length===0)return respond({error:'recent_submission_or_rate_limit'},429,cors);
     return respond({ok:true,reference:rows[0].id},201,cors);
   }catch(error){
