@@ -116,6 +116,20 @@ function downloadCsv(){
   status('Exportación lista. Contiene datos personales; guarda el archivo de forma segura. No sustituye un respaldo completo de la base.');
 }
 el('exportCsv').addEventListener('click',downloadCsv);
+let lastKnownLeadCount=null;
+async function updateInboxCount(){
+  if(!user||document.visibilityState!=='visible')return;
+  try{
+    const data=await call('/api/admin/metrics');
+    const total=Number(data.metrics?.total||0);
+    if(lastKnownLeadCount!==null&&total>lastKnownLeadCount){
+      status('Llegaron '+(total-lastKnownLeadCount)+' nuevas consultas. Revisa la bandeja.');
+      await load();
+    }
+    lastKnownLeadCount=total;
+  }catch(e){status('Sin conexión para comprobar nuevas consultas.',true)}
+}
+setInterval(updateInboxCount,300000);
 el('filter').addEventListener('change',render);el('refresh').addEventListener('click',load);
 el('logout').addEventListener('click',async()=>{await auth.signOut();user=null;leads=[];setVisibility()});
 el('loginForm').addEventListener('submit',async ev=>{ev.preventDefault();el('loginError').textContent='Ingresando…';el('signin').disabled=true;try{const a=await auth.signIn.email({email:el('email').value,password:el('password').value});if(a.error)throw Error(a.error.message||'Auth error');const s=await auth.getSession();user=s.data?.user||null;if(!user)throw Error('No valid session');el('userID').textContent='ID de cuenta: '+user.id;el('activeUserID').textContent='Tu ID de usuario: '+user.id;el('pendingApproval').hidden=false;setVisibility();await load()}catch(e){el('loginError').textContent='No se pudo acceder: '+e.message;el('loginError').className='status error'}finally{el('signin').disabled=false}});
