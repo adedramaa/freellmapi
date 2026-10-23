@@ -1,4 +1,4 @@
-# Autónoma Dev — Plan maestro técnico y comercial v2.0
+# Autónoma Dev — Plan maestro técnico y comercial v3.0
 
 **Auditoría:** 2026-10-23 — el documento completo para el responsable está adjunto en la conversación ChatGPT como `AGENCIA_AUTONOMA_AUDITORIA_Y_PLAN_TOTAL_2026-10-23.md`.
 
@@ -54,3 +54,7 @@ Agencia de desarrollo web, automatización de negocios y sistemas livianos, oper
 - Ninguna prueba de desarrollo sintética sustituye un pedido real pagado.
 
 **Definición de 100 % técnico:** solicitud real→aviso a propietario→presupuesto revisado→aceptación/pago comprobado→Claude con 9 skills crea PR en repo aislado→CI/QA→entrega→soporte/reversión, todo probado, auditado y con límites de gasto. Ganancias no garantizadas.
+
+## Expansión internacional
+
+Nueva referencia operativa: [ESTRATEGIA_INTERNACIONAL_2026-10-23.md](./ESTRATEGIA_INTERNACIONAL_2026-10-23.md). La web ya ofrece un formulario en inglés y presupuestos separados por moneda; los pagos internacionales requieren habilitación y verificación documental antes de comenzar proyectos.
