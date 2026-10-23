@@ -44,7 +44,10 @@ jobs:
             echo "Rejected: no still-image animatic pipeline allowed" >&2
             exit 1
           fi
-          echo "Blender 3D and preserved narrator required" >> "$GITHUB_STEP_SUMMARY"
+          if grep -Fq 'Vera abrigo' fabrica_free/blender_noir_3d.py; then
+            echo 'REJECTED: previous block puppet not removed' >&2; exit 1
+          fi
+          echo "Blender 3D, skinned woman asset, and preserved narrator required" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install portable Blender and FFmpeg without apt
         shell: bash
@@ -86,6 +89,18 @@ jobs:
           "$FFMPEG_PATH/ffmpeg" -hide_banner -version | head -n 1
           "$FFMPEG_PATH/ffprobe" -v error -show_entries format=duration -of default=nw=1:nk=1 \
             fabrica_free/audio/narrador_original_ep01.opus
+
+      - name: Require real CC0 skinned female character, not geometry placeholders
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          mkdir -p fabrica_free/assets
+          curl -fSL --retry 2 --connect-timeout 15 --max-time 170 \
+            'https://raw.githubusercontent.com/NafisRayan/Animate-Rigged-Humanoid-No-Blender/main/Universal%20Base%20Characters%5BStandard%5D/Universal%20Base%20Characters%5BStandard%5D/Base%20Characters/Unity/Superhero_Female_FullBody.fbx' \
+            -o fabrica_free/assets/Superhero_Female_FullBody.fbx
+          test "$(wc -c < fabrica_free/assets/Superhero_Female_FullBody.fbx)" -gt 250000
+          echo "ACTRIZ=rigged female CC0 Quaternius, no block placeholder" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build and mechanically verify physical animated Blender set
         env:
