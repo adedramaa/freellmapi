@@ -296,3 +296,22 @@ Se suman solo 2 puntos al 55% anterior por el exportador verificable y la prepar
 - Nueva puntuación orientativa: **60% preparado y 40% pendiente**. El único punto extra refleja un refuerzo real de las barreras de inicio de trabajo, no QA E2E adicional, facturación ni ingresos.
 - Distribución: sitio y captación 20/20; panel 11/15; propuestas 12/15; cobros/fiscalidad 3/15; sistema de desarrollo 6/20; QA/entrega/monitoreo 8/10; ventas verificadas 0/5.
 - Sigue pendiente: acceso del propietario, GitHub privado y CI ejecutado, modelo Claude Code con credenciales y coste autorizados, integraciones externas de cobro/conciliación, facturación y ventas reales.
+
+## Ronda 2026-10-23 23:47 UTC — acceso seguro del propietario y separación de permisos
+
+### Cambios confirmados
+- Neon Function `agenciaadmin` versión **8 completed** incorpora `GET /api/admin/access`. La ruta solo responde después de verificar el JWT y el origen autorizado: devuelve el `user_id` de la propia sesión y el booleano `approved`, sin revelar ningún lead. Para todas las rutas comerciales continúa el rechazo `403 not_authorized_as_owner` cuando la cuenta no está aprobada.
+- Panel móvil `site/admin/index.html` separa **tres estados**: no autenticado, sesión autenticada sin aprobación y CRM de propietario autorizado. El CRM se oculta del cliente si `ownerApproved!==true`. Cuando el titular entra con Google o contraseña, ve su ID real, un botón para copiarlo, otro para revisar permisos y un botón para cerrar sesión.
+- Ningún registro de cuenta recibe automáticamente facultades administrativas. La autorización depende exclusivamente de `agencia.admin_users.active AND approved_at IS NOT NULL` en el servidor. El hecho de compartir un ID de usuario no demuestra titularidad: comprobar identidad por un canal independiente antes de autorizar.
+- Rendimiento y publicación: Neon función administrativa revisión 8 activa, Render despliegue `dep-dbdv41t9fdbs738paclg`, commit `be4b6a483117c1ffa4d38ce389cd443a33ac5f11`, estado `live`. Página administrativa y página pública accesibles desde HTTP.
+- Comprobaciones: 8 inspecciones estáticas del HTML/backend completadas, y sintaxis del script de módulo validada mediante envoltura async (necesaria por top-level await). Consultas HTTP sin credenciales a `/api/admin/access` y `/api/admin/leads` rechazadas con **403** sin revelar datos.
+- Neon Auth Better Auth activo; dominio de confianza confirmado `https://autonoma-dev-agencia-v2.onrender.com`. El inicio de sesión real de propietario, la redirección de Google y la llamada autorizada **aún no están probadas** con credenciales reales del usuario.
+- Estado de datos verificado: **0 administradores activos, 0 leads comerciales reales, 0 contratos aceptados, 0 intentos de pago, 0 órdenes**. Cron de Neon tomó snapshots correctamente a las **22:00 y 23:00 UTC** (web y API activas; consultas pendientes 0).
+- GitHub Actions sigue con **0 ejecuciones confirmadas** del workflow de prueba de Node. No se creó repositorio privado, no se inició Claude Code, no hubo nuevos servicios pagos ni facturación.
+
+### Nueva reestimación
+**61% implementado / 39% pendiente**, desde 60%/40%. Se aumenta solo un punto por completar la experiencia de solicitud de permisos y aislamiento visual de datos; no se cuentan pruebas de propietario ni backend productivo con cliente real.
+Distribución: web/captación **20/20**, panel/CRM **12/15**, presupuestos/acuerdos **12/15**, cobros/fiscalidad **3/15**, desarrollo con agentes **6/20**, QA/entrega/monitoreo **8/10**, ventas **0/5**.
+
+### Paso que desbloquea la cuenta desde Android
+Abrir `https://autonoma-dev-agencia-v2.onrender.com/admin/`, acceder con Google o crear cuenta, pulsar **Copiar mi ID** en la página «Cuenta identificada · autorización pendiente». El responsable del despliegue debe verificar por separado la identidad antes de activar el UUID en `agencia.admin_users`. No pedir claves, tokens ni códigos de recuperación.
