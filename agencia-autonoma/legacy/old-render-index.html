@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Desarrollo web, aplicaciones y automatizaciones para negocios argentinos. Cuéntanos tu idea y recibe una propuesta con alcance claro.">
+<meta name="theme-color" content="#f8f7f3">
+<title>Autónoma Dev — Software y automatización para negocios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f8f7f3;--ink:#142a2a;--accent:#0c745d;--muted:#5a6a66;--hair:#d8ded8;--paper:#ffffff;--off:#edf2ea;--display:"Bricolage Grotesque",sans-serif;--body:"DM Sans",sans-serif;--mono:"IBM Plex Mono",monospace}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:var(--body);background:var(--bg);color:var(--ink);margin:0}a{color:inherit;text-decoration:none}button,input,textarea,select{font:inherit}button{cursor:pointer}svg{vertical-align:middle}h1,h2,h3,p{margin-top:0}::selection{background:#b2ddcf;color:#102b25}:focus-visible{outline:3px solid #00a985;outline-offset:3px}
+.container{width:min(1360px,90%);margin:0 auto}
+.nav{height:82px;border-bottom:1px solid var(--hair);display:flex;align-items:center;justify-content:space-between;gap:20px}
+.logo{display:inline-flex;gap:11px;align-items:center;font:800 25px var(--display);letter-spacing:-1.25px;white-space:nowrap}
+.dot{color:var(--accent)}.mark{width:27px;height:27px;display:grid;grid-template-columns:1fr 1fr;gap:3px;transform:rotate(-12deg)}.mark i{display:block;background:var(--accent);border-radius:2px}.mark i:nth-child(2){opacity:.34}.mark i:nth-child(3){opacity:.58}
+.navlinks{display:flex;gap:32px;align-items:center;font-size:13px;font-weight:700}.navlinks a:hover,.textlink:hover{color:var(--accent)}
+.btn{background:var(--accent);color:#fff!important;border:1px solid var(--accent);padding:14px 19px;border-radius:7px;display:inline-flex;justify-content:center;align-items:center;gap:16px;font-weight:700;font-size:13px;transition:background .18s,transform .18s}
+.btn:hover{background:#065b4b;transform:translateY(-1px)}.btn:disabled{opacity:.6;cursor:not-allowed}.navbtn{white-space:nowrap}.mobilemenu{display:none;background:none;color:var(--ink);border:0;padding:10px}
+.hero{min-height:670px;display:grid;grid-template-columns:1.06fr .94fr;gap:8%;align-items:center;padding:82px 0}
+.kicker{font:600 11px var(--mono);letter-spacing:1.5px;color:var(--accent);margin-bottom:29px}.kicker:before{content:"";display:inline-block;vertical-align:middle;width:7px;height:7px;background:var(--accent);border-radius:50%;margin-right:11px}
+h1{font:800 clamp(64px,7vw,108px)/.98 var(--display);letter-spacing:-.07em;margin-bottom:25px}h1 strong{color:var(--accent);font-weight:inherit}
+.herolead{max-width:530px;font-size:19px;line-height:1.76;color:var(--muted)}
+.heroactions{display:flex;gap:26px;align-items:center;flex-wrap:wrap;margin:32px 0 41px}.textlink{font-size:13px;font-weight:800;display:inline-flex;gap:10px;align-items:center}
+.minirow{display:flex;gap:26px;flex-wrap:wrap;font-size:11px;font-weight:700;color:var(--muted)}.minirow span{display:inline-flex;gap:9px;align-items:center}.minirow b{color:var(--accent);font-size:17px}
+.diagram{border-radius:16px;background:#143a39;border:1px solid #204943;color:#f1fbf5;box-shadow:19px 20px 0 #e3ebe1;overflow:hidden}
+.diagramtop{display:flex;align-items:center;padding:19px 23px;border-bottom:1px solid #345a52;gap:15px;color:#a8c4ba;font:500 10px var(--mono);letter-spacing:.6px}
+.diagramtop .dlogo{border:1px solid #588077;border-radius:6px;color:#fff;padding:8px;font:800 16px var(--display);letter-spacing:-1px}.live{margin-left:auto;color:#8fe6c3}.live:before{content:"";display:inline-block;width:6px;height:6px;background:#78dcb4;border-radius:50%;vertical-align:middle;margin-right:7px}
+.nodes{padding:35px}.node{background:#1f4b47;border:1px solid #497068;border-radius:11px;padding:17px;display:flex;align-items:center;gap:16px}.node:nth-child(5){background:#2d6b59}.num{border:1px solid #518475;border-radius:7px;padding:11px;font:500 12px var(--mono);color:#a3eacb}
+.nodetext{flex:1;display:flex;flex-direction:column;gap:5px}.nodetext b{font-size:14px}.nodetext small{font-size:11px;color:#aac9be}.nodecheck{color:#85edc7;font-size:21px}.join{height:26px;border-left:2px solid #5f9180;margin-left:35px}
+.diagramfoot{display:flex;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid #345a52;padding:19px 25px;font:500 10px var(--mono);letter-spacing:.1px}.diagramfoot span{color:#95b9ad}.diagramfoot b{color:#9ce8cb}
+.ribbon{background:var(--off);border-block:1px solid #d9e3d7;display:flex;justify-content:center;align-items:center;gap:36px;min-height:67px;padding:18px 4%;font:600 10px var(--mono);letter-spacing:.7px;color:#476b5c;text-align:center}.star{font-size:20px;color:var(--accent)}
+.section{padding:102px 0}.sectionhead{display:flex;justify-content:space-between;gap:35px;align-items:end;margin-bottom:45px}.sectionhead h2,.contactleft h2,.faq h2{font:700 clamp(37px,4.1vw,62px)/1.1 var(--display);letter-spacing:-.055em;margin-bottom:0}.sectionhead h2 em,.contactleft h2 em,.faq h2 em{font-style:normal;color:var(--accent)}.sectionhead>p{max-width:310px;font-size:14px;line-height:1.9;color:var(--muted)}
+.services{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--hair);border-radius:11px;overflow:hidden}.service{background:var(--paper);border-right:1px solid var(--hair);min-height:335px;padding:28px 24px;display:flex;flex-direction:column}.service:last-child{border:0}
+.sttop{display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:25px}.sttop small{font:600 10px var(--mono);color:var(--muted)}.service h3{font:700 23px/1.2 var(--display);letter-spacing:-.035em;margin:43px 0 12px}.service p{font-size:13px;line-height:1.76;color:var(--muted)}.stfoot{margin-top:auto;display:flex;justify-content:space-between;gap:8px;align-items:end;color:var(--accent);font-size:10px;font-weight:700}.stfoot a{background:var(--off);border-radius:50%;padding:10px;font-size:17px}
+.demogrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}.democard{display:flex;flex-direction:column;padding:30px;border:1px solid var(--hair);background:var(--paper);border-radius:12px}.demolabel{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font:600 10px var(--mono);letter-spacing:.08em;color:var(--accent)}.demolabel span:last-child{color:var(--muted)}.democard h3{font:700 27px/1.15 var(--display);letter-spacing:-.045em;margin:29px 0 12px}.democard>p{line-height:1.75;color:var(--muted);font-size:14px;max-width:490px}.demowidget{padding:24px;background:#f2f6f0;border:1px solid #dce8d9;border-radius:10px;display:grid;gap:14px;margin:12px 0 24px}.demoheading{font:600 10px var(--mono);display:flex;align-items:center;justify-content:space-between;gap:15px;letter-spacing:.07em}.demoheading span{color:var(--muted)}.demowidget label{display:grid;gap:7px;font-weight:700;font-size:12px}.demowidget input{width:100%;background:#fff;border:1px solid #d3dfd2;border-radius:6px;padding:12px;color:var(--ink)}.demototal{border-top:1px solid #d3dfd2;margin-top:8px;padding-top:16px;display:flex;align-items:center;justify-content:space-between;gap:12px}.demototal span{font-size:12px;font-weight:600;color:var(--muted)}.demototal strong{font:700 27px var(--display);color:var(--accent)}.demowidget small{color:var(--muted);font-size:10px}.demolink{font-size:13px;color:var(--accent)!important;font-weight:800;margin-top:auto}.demoTimeline{padding:13px 0;display:grid;gap:15px}.demoPoint{display:flex;align-items:center;gap:13px;color:#728079;font-size:13px;font-weight:700}.demoPoint i{font-style:normal;background:#d9e1d7;display:grid;place-items:center;width:31px;height:31px;border-radius:50%;font:700 12px var(--mono)}.demoPoint.active{color:var(--accent)}.demoPoint.active i{background:var(--accent);color:#fff}.demobutton{border:1px solid #90b8a5;background:#fff;color:var(--accent);border-radius:7px;padding:13px;font-weight:800;font-size:12px}.demobutton:hover{background:#e9f2ed}.demoState{color:var(--accent);font-size:12px;font-weight:700;margin:0}
+.banner{background:var(--ink);color:#f3f8f3;padding:70px max(5%,calc((100vw - 1360px)/2));display:grid;grid-template-columns:52px 1fr 270px;align-items:center;gap:32px}.bannericon{background:#226354;color:#ace8cb;border-radius:50%;width:52px;height:52px;display:grid;place-items:center;font-size:25px}.banner .label{font:600 10px var(--mono);color:#a6d0bd;letter-spacing:1px}.banner h2{font:700 clamp(30px,3.6vw,49px)/1.15 var(--display);letter-spacing:-.05em;margin:11px 0 0}.banner>p{font-size:13px;line-height:1.85;color:#a8c3b9}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}.step{border-top:2px solid var(--accent);padding-top:22px}.step small{font:600 13px var(--mono);color:var(--accent)}.step h3{margin:44px 0 13px;font:700 23px/1.22 var(--display);letter-spacing:-.035em}.step p{font-size:13px;line-height:1.85;color:var(--muted)}
+.contactwrap{background:#e9efe7;padding:106px 0}.contactgrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:8%}.contactleft h2{font-size:clamp(45px,5.5vw,76px)}.contactleft>p:not(.kicker){max-width:420px;color:#4d6659;font-size:15px;line-height:1.9;margin:26px 0 36px}.checkline{display:flex;gap:12px;align-items:center;color:#31694f;font-size:13px;font-weight:700;margin:14px 0}
+.panel{border:1px solid var(--hair);border-radius:13px;background:#fff;padding:33px;box-shadow:0 12px 40px #173d2910}.panelhead{display:flex;justify-content:space-between;border-bottom:1px solid var(--hair);padding-bottom:20px;margin-bottom:24px;font:600 10px var(--mono);letter-spacing:.8px}.panelhead span:last-child{color:var(--accent)}
+.form{display:grid;gap:18px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}.form label{display:grid;gap:8px;font-size:12px;font-weight:700}
+.form input:not([type=checkbox]),.form select,.form textarea{display:block;width:100%;border:1px solid #d2dad1;border-radius:7px;background:#fff;color:var(--ink);padding:13px 12px;font-size:14px;font-weight:400;outline-color:var(--accent)}
+.form textarea{resize:vertical;min-height:118px}.form .consent{display:flex;align-items:start;gap:9px;line-height:1.6;color:var(--muted);font-weight:500}.consent input{margin:3px 0 0;accent-color:var(--accent)}.consent a{text-decoration:underline;color:var(--accent)}.full{width:100%}.fine{font-size:11px;text-align:center;color:var(--muted);margin:-7px 0 0}.message{font-size:13px;margin:0;line-height:1.7;color:#9c4036}.ok{color:var(--accent);font-weight:700;font-size:15px}.trap{position:absolute!important;left:-99999px;visibility:hidden}
+.faq{width:min(920px,90%);margin:0 auto;padding:100px 0}.faq h2{margin-bottom:44px}.faq details{border-top:1px solid var(--hair);padding:24px 0}.faq details:last-child{border-bottom:1px solid var(--hair)}.faq summary{list-style:none;display:flex;justify-content:space-between;gap:20px;font-size:16px;font-weight:700;cursor:pointer}.faq summary::-webkit-details-marker{display:none}.faq summary:after{content:"+";font-size:22px;color:var(--accent)}.faq details[open] summary:after{content:"−"}.faq details p{font-size:14px;color:var(--muted);max-width:660px;line-height:1.85;padding-top:15px}
+.footer{padding:43px 0;border-top:1px solid var(--hair);display:flex;justify-content:space-between;align-items:center;gap:22px}.footer p{font-size:12px;color:var(--muted);margin:5px 0}.footer small,.footer a.legal{font-size:11px;color:var(--muted)}.footer a.legal{text-decoration:underline}.footer .footaction{color:var(--accent);font-size:13px;font-weight:700}
+@media(max-width:1150px){.hero{gap:5%}.services{grid-template-columns:repeat(2,1fr)}.service:nth-child(2){border-right:0}.service:nth-child(-n+2){border-bottom:1px solid var(--hair)}.banner{grid-template-columns:50px 1fr}.banner>p{grid-column:2}.steps{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:750px){.demogrid{grid-template-columns:1fr}.democard{padding:23px}.democard h3{font-size:24px}.nav{height:70px}.logo{font-size:22px}.navlinks,.navbtn{display:none}.mobilemenu{display:block}.navlinks.open{position:absolute;top:69px;left:0;right:0;background:var(--paper);padding:23px 5%;display:grid;gap:20px;z-index:20;box-shadow:0 14px 22px #0002}.hero{display:flex;flex-direction:column;align-items:stretch;padding:68px 0 85px;gap:50px}.hero h1{font-size:clamp(55px,12vw,83px)}.herolead{font-size:17px}.minirow{gap:15px}.diagram{box-shadow:9px 12px 0 #e3ebe1}.nodes{padding:23px}.ribbon{gap:10px;font-size:9px;flex-wrap:wrap}.section{padding:80px 0}.sectionhead{display:block}.sectionhead>p{max-width:540px;margin-top:20px}.services{grid-template-columns:1fr}.service{min-height:270px;border-right:0;border-bottom:1px solid var(--hair)}.service:last-child{border:0}.service h3{margin-top:28px}.banner{display:block;padding:65px 5%}.bannericon{margin-bottom:22px}.banner>p{max-width:500px}.contactwrap{padding:80px 0}.contactgrid{display:block}.contactleft{margin-bottom:38px}.panel{padding:24px}.faq{padding:75px 0}.footer{flex-wrap:wrap;align-items:start}}
+@media(max-width:450px){.hero h1{font-size:54px}.heroactions{gap:22px}.nodes{padding:20px 15px}.diagramfoot{font-size:8px}.sectionhead h2{font-size:36px}.steps{grid-template-columns:1fr}.step h3{margin-top:19px}.fields{grid-template-columns:1fr}.contactleft h2{font-size:50px}.footer{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+</style>
+</head>
+<body>
+<header class="container nav">
+  <a href="#inicio" class="logo" aria-label="Autónoma Dev, inicio"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>autónoma<span class="dot">.</span>dev</span></a>
+  <nav class="navlinks" id="navlinks" aria-label="Menú principal"><a href="#servicios">Servicios</a><a href="#metodo">Cómo trabajamos</a><a href="#ejemplos">Demos</a><a href="#preguntas">Preguntas</a><a href="#contacto">Contacto</a></nav>
+  <a href="#contacto" class="btn navbtn">Cuéntanos tu idea ↗</a>
+  <button class="mobilemenu" id="mobilemenu" type="button" aria-label="Abrir menú" aria-controls="navlinks" aria-expanded="false">☰</button>
+</header>
+<main>
+<section class="container hero" id="inicio">
+ <div><p class="kicker">ESTUDIO DIGITAL · ARGENTINA</p><h1>Menos tareas.<br><strong>Más negocio.</strong></h1>
+ <p class="herolead">Creamos páginas, herramientas y automatizaciones que hacen el trabajo repetitivo por ti. Software útil, pensado para empresas reales.</p>
+ <div class="heroactions"><a href="#contacto" class="btn">Quiero automatizar mi negocio ↗</a><a class="textlink" href="#servicios">Explorar servicios →</a></div>
+ <div class="minirow"><span><b>✓</b> Alcance acordado antes de iniciar</span><span><b>✓</b> Privacidad de tus datos</span></div></div>
+ <div class="diagram" aria-label="Ejemplo de un flujo de automatización"><div class="diagramtop"><span class="dlogo">A/D</span><span>FLUJO DE TRABAJO</span><span class="live">EJEMPLO</span></div>
+ <div class="nodes"><div class="node"><span class="num">01</span><span class="nodetext"><b>Cliente consulta</b><small>Formulario / Web</small></span><span class="nodecheck">✓</span></div>
+ <div class="join"></div><div class="node"><span class="num">02</span><span class="nodetext"><b>Sistema organiza</b><small>Datos y seguimiento</small></span><span class="nodecheck">✓</span></div>
+ <div class="join"></div><div class="node"><span class="num">03</span><span class="nodetext"><b>Equipo responde</b><small>Propuesta revisada</small></span><span class="nodecheck">↗</span></div></div>
+ <div class="diagramfoot"><span>MENOS OPERACIÓN MANUAL</span><b>MÁS TIEMPO PARA VENDER</b></div></div>
+</section>
+<div class="ribbon"><span>SOFTWARE PARA NEGOCIOS REALES</span><span class="star">✳</span><span>DISEÑO + DESARROLLO + AUTOMATIZACIÓN</span><span class="star">✳</span><span>DESDE ARGENTINA</span></div>
+<section class="container section" id="servicios"><div class="sectionhead"><div><p class="kicker">01 / SOLUCIONES</p><h2>Tu negocio tiene trabajo.<br><em>Construimos la herramienta.</em></h2></div><p>Empezamos por lo que genera resultados medibles y se puede mantener sin complicaciones.</p></div>
+<div class="services">
+<article class="service"><div class="sttop"><small>01 / SERVICIO</small>◎</div><h3>Sitios y landing pages</h3><p>Webs para vender, mostrar servicios y transformar visitas en consultas comerciales.</p><div class="stfoot"><span>DISEÑO · SEO · FORMULARIOS</span><a href="#contacto" aria-label="Consultar por sitios web">↗</a></div></article>
+<article class="service"><div class="sttop"><small>02 / SERVICIO</small>⌘</div><h3>Automatizaciones comerciales</h3><p>Conectamos formularios, correos, bases de datos y tareas que haces manualmente.</p><div class="stfoot"><span>INTEGRACIONES · APIs · N8N</span><a href="#contacto" aria-label="Consultar por automatizaciones">↗</a></div></article>
+<article class="service"><div class="sttop"><small>03 / SERVICIO</small>⌗</div><h3>Herramientas a medida</h3><p>Paneles, catálogos dinámicos, cotizadores y aplicaciones web que ahorran tiempo.</p><div class="stfoot"><span>SISTEMAS · PANELES · DATOS</span><a href="#contacto" aria-label="Consultar por sistemas a medida">↗</a></div></article>
+<article class="service"><div class="sttop"><small>04 / SERVICIO</small>◇</div><h3>Mantenimiento mensual</h3><p>Correcciones, mejoras y seguimiento para que tus herramientas sigan operando.</p><div class="stfoot"><span>SOPORTE · MEJORAS · REVISIÓN</span><a href="#contacto" aria-label="Consultar por mantenimiento">↗</a></div></article>
+</div></section>
+<section class="container section" id="ejemplos"><div class="sectionhead"><div><p class="kicker">02 / DEMOSTRACIONES</p><h2>No solo lo explicamos.<br><em>Puedes probar la idea.</em></h2></div><p>Dos simulaciones funcionales creadas para mostrar cómo podría ayudarte un sistema a medida. No son testimonios ni trabajos de clientes.</p></div>
+<div class="demogrid">
+  <article class="democard"><div class="demolabel"><span>DEMO 01 / COTIZADOR</span><span>INTERACTIVO</span></div><h3>Presupuestos sin hacer cuentas a mano.</h3><p>Ejemplo de un comercio que cotiza sus productos automáticamente. Prueba valores distintos.</p>
+  <div class="demowidget"><div class="demoheading">NUEVA COTIZACIÓN <span>Ejemplo local</span></div>
+    <label>Precio unitario (ARS)<input type="number" id="demoPrice" min="0" max="100000000" step="100" value="2500" inputmode="decimal"></label>
+    <label>Cantidad<input type="number" id="demoQty" min="1" max="10000" step="1" value="50" inputmode="numeric"></label>
+    <div class="demototal"><span>Total estimado</span><strong id="demoTotal" aria-live="polite">$ 125.000</strong></div>
+    <small>No incluye impuestos, envíos ni condiciones comerciales.</small>
+  </div><a href="#contacto" class="demolink">Quiero algo así para mi negocio ↗</a></article>
+  <article class="democard"><div class="demolabel"><span>DEMO 02 / SEGUIMIENTO</span><span>INTERACTIVO</span></div><h3>Pedidos organizados sin planillas eternas.</h3><p>Visualiza cómo un sistema sencillo podría acompañar una venta desde la consulta hasta la entrega.</p>
+   <div class="demowidget"><div class="demoheading">ESTADO DE PEDIDO <span>#DEMO-001</span></div>
+     <div class="demoTimeline"><div class="demoPoint active" data-step="0"><i>✓</i><span>Consulta recibida</span></div><div class="demoPoint" data-step="1"><i>2</i><span>Preparación</span></div><div class="demoPoint" data-step="2"><i>3</i><span>Entrega</span></div></div>
+     <button type="button" class="demobutton" id="demoAdvance">Avanzar estado de demostración →</button>
+     <p class="demoState" id="demoState" aria-live="polite">Estado: Consulta recibida</p>
+   </div><a href="#contacto" class="demolink">Quiero automatizar mis pedidos ↗</a></article>
+</div></section>
+<section class="banner"><div class="bannericon">✳</div><div><p class="label">TECNOLOGÍA CON CRITERIO</p><h2>No vendemos magia.<br>Construimos soluciones que funcionan.</h2></div><p>La IA acelera el desarrollo. Un alcance claro, las pruebas y la revisión hacen el resultado más confiable.</p></section>
+<section class="container section" id="metodo"><div class="sectionhead"><div><p class="kicker">03 / PROCESO</p><h2>De una idea suelta<br><em>a un sistema concreto.</em></h2></div><p>Antes de empezar, definimos exactamente el problema que debemos resolver.</p></div>
+<div class="steps"><div class="step"><small>01</small><h3>Cuéntanos qué necesitas</h3><p>Describe tu negocio y la tarea que quieres simplificar.</p></div><div class="step"><small>02</small><h3>Definimos el alcance</h3><p>Revisamos factibilidad, presupuesto y entregables antes de iniciar.</p></div><div class="step"><small>03</small><h3>Construimos y probamos</h3><p>Desarrollamos con herramientas de IA, pruebas y revisión de código.</p></div><div class="step"><small>04</small><h3>Entregamos con claridad</h3><p>Recibes tu solución, instrucciones y soporte según lo acordado.</p></div></div>
+</section>
+<section class="contactwrap" id="contacto"><div class="container contactgrid">
+<div class="contactleft"><p class="kicker">04 / TU PROYECTO</p><h2>¿Qué podríamos<br><em>simplificar hoy?</em></h2><p>Cuéntanos tu idea. Registramos tu solicitud para evaluar su viabilidad y preparar una propuesta.</p>
+<div class="checkline">✓ &nbsp; Consulta sin compromiso</div><div class="checkline">✓ &nbsp; Respetamos tus datos</div><div class="checkline">✓ &nbsp; Presupuesto acordado antes de iniciar</div></div>
+<div class="panel"><div class="panelhead"><span>INICIAR CONSULTA</span><span>01 — 01</span></div><form id="inquiry" class="form" novalidate>
+<div class="fields"><label>Tu nombre *<input name="name" autocomplete="name" required maxlength="90" minlength="2" placeholder="¿Cómo te llamas?"></label><label>Email de contacto *<input name="email" type="email" autocomplete="email" required maxlength="200" placeholder="tu@email.com"></label></div>
+<label>Empresa o emprendimiento (opcional)<input name="business" autocomplete="organization" maxlength="120" placeholder="Nombre de tu negocio"></label>
+<label>¿Qué necesitas?<select name="service"><option value="automatizacion">Automatizar tareas</option><option value="web">Página web o landing</option><option value="aplicacion">Aplicación o sistema a medida</option><option value="mantenimiento">Mantenimiento</option><option value="otro">Aún no lo sé</option></select></label>
+<label>Presupuesto aproximado (opcional)<select name="budget"><option value="no_definido">Aún no tengo uno definido</option><option value="hasta_150k">Hasta ARS 150.000</option><option value="150k_500k">ARS 150.000–500.000</option><option value="mas_500k">Más de ARS 500.000</option></select></label>
+<label>Cuéntanos tu proyecto *<textarea name="details" required minlength="20" maxlength="2500" rows="4" placeholder="Qué haces hoy, qué te quita tiempo y qué te gustaría lograr..."></textarea></label>
+<label class="consent"><input name="consent" type="checkbox" required> Acepto que mis datos se utilicen para responder esta consulta según la <a href="/privacidad/" target="_blank" rel="noopener noreferrer">política de privacidad</a>.</label>
+<input class="trap" name="honey" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+<button class="btn full" type="submit" id="submit">Enviar mi proyecto ↗</button><p class="message" id="status" role="status" aria-live="polite"></p>
+<p class="fine">No se realiza ningún cobro al enviar la consulta.</p>
+</form></div>
+</div></section>
+<section class="faq" id="preguntas"><p class="kicker">04 / PREGUNTAS</p><h2>Lo importante,<br><em>sin vueltas.</em></h2>
+<details><summary>¿Trabajan con empresas pequeñas?</summary><p>Sí. Diseñamos soluciones concretas para comercios, profesionales y emprendimientos.</p></details>
+<details><summary>¿Cuánto cuesta un proyecto?</summary><p>Depende del alcance. Evaluamos los requerimientos y acordamos el presupuesto antes de trabajar.</p></details>
+<details><summary>¿Todo se desarrolla con IA?</summary><p>Utilizamos IA cuando aporta valor y la combinamos con controles de calidad. No prometemos automatización infalible.</p></details>
+</section></main>
+<footer class="container footer"><a href="#inicio" class="logo"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>autónoma<span class="dot">.</span>dev</span></a><div><p>Software, automatización y criterio · Argentina</p><a class="legal" href="/privacidad/">Política de privacidad</a></div><a class="footaction" href="#contacto">Hablemos de tu idea ↗</a></footer>
+<script>
+(function(){
+"use strict";
+const menu=document.querySelector("#mobilemenu"), nav=document.querySelector("#navlinks");
+menu.addEventListener("click",()=>{const opened=nav.classList.toggle("open");menu.setAttribute("aria-expanded",String(opened));menu.textContent=opened?"✕":"☰";});
+nav.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>{nav.classList.remove("open");menu.setAttribute("aria-expanded","false");menu.textContent="☰";}));
+const priceInput=document.getElementById("demoPrice"),qtyInput=document.getElementById("demoQty"),demoTotal=document.getElementById("demoTotal");
+const money=new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0});
+function updateDemoQuote(){const price=Math.max(0,Math.min(100000000,Number(priceInput.value)||0));const qty=Math.max(0,Math.min(10000,Math.floor(Number(qtyInput.value)||0)));demoTotal.textContent=money.format(price*qty);}
+[priceInput,qtyInput].forEach(el=>el.addEventListener("input",updateDemoQuote));updateDemoQuote();
+let demoStep=0;const demoStages=["Consulta recibida","Preparación","Entrega completada"];document.getElementById("demoAdvance").addEventListener("click",()=>{demoStep=(demoStep+1)%3;document.querySelectorAll(".demoPoint").forEach((el,i)=>{el.classList.toggle("active",i<=demoStep);el.querySelector("i").textContent=i<=demoStep?"✓":String(i+1)});document.getElementById("demoState").textContent="Estado: "+demoStages[demoStep];});
+const form=document.getElementById("inquiry"), button=document.getElementById("submit"), status=document.getElementById("status");
+form.addEventListener("submit",async(e)=>{
+e.preventDefault();
+if(!form.reportValidity())return;
+const data=new FormData(form);
+const body={name:String(data.get("name")||"").trim(),email:String(data.get("email")||"").trim(),business:String(data.get("business")||"").trim(),service:String(data.get("service")||""),budget:String(data.get("budget")||""),details:String(data.get("details")||"").trim(),consent:data.get("consent")==="on",honey:String(data.get("honey")||"")};
+button.disabled=true;button.textContent="Registrando...";status.textContent="";
+try{
+ const response=await fetch("https://agencia-autonoma-dev.floot.app/_api/inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({json:body})});
+ const parsed=await response.json(), payload=parsed.json||parsed;
+ if(!response.ok)throw new Error(payload.error||"No pudimos registrar la consulta.");
+ if(payload.ok){form.reset();status.classList.add("ok");status.textContent="Solicitud registrada. Número de referencia: "+payload.reference+". Gracias por contactarnos.";}
+ else throw new Error("La respuesta no pudo verificarse.");
+}catch(error){status.classList.remove("ok");status.textContent=error instanceof Error?error.message:"Error de conexión. Intenta nuevamente.";}
+finally{button.disabled=false;button.textContent="Enviar mi proyecto ↗";}
+});
+})();
+</script>
+</body></html>
