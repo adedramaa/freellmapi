@@ -72,7 +72,13 @@ export default {
   if(origin!==ORIGIN)return answer({error:'forbidden'},403);
   let user;
   try{user=await jwtUser(request)}catch{return answer({error:'unauthorized'},401,cors)}
-  try{if(!await checkAdmin(user))return answer({error:'not_authorized_as_owner'},403,cors)}catch{return answer({error:'backend_unavailable'},503,cors)}
+  let approved;
+  try{approved=await checkAdmin(user)}catch{return answer({error:'backend_unavailable'},503,cors)}
+  // Safe onboarding: reveal the authenticated user's own ID and approval flag only.
+  // This endpoint never returns customer records or allows self-approval.
+  if(request.method==='GET'&&url.pathname==='/api/admin/access')
+    return answer({ok:true,user_id:user,approved},200,cors);
+  if(!approved)return answer({error:'not_authorized_as_owner'},403,cors);
   try{
     if(url.pathname==='/api/admin/leads'&&request.method==='GET'){
       const rows=await sql(`SELECT l.id::text,l.created_at,l.name,l.email,l.business,l.service,l.details,l.budget,l.score,l.risk_flags,l.status,l.client_country,l.preferred_currency,l.preferred_language,l.budget_range_global,
