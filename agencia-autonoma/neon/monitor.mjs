@@ -45,7 +45,7 @@ export default {
     if(!Number.isFinite(d)||Math.abs(Date.now()-d)>7200000)throw new Error('stale_schedule');
   }catch{return new Response(JSON.stringify({error:'bad_schedule'}),{status:400,headers:{'Content-Type':'application/json'}})}
   const slot=new Date(scheduled).toISOString().slice(0,13)+':00:00.000Z';
-  const [web,api]=await Promise.all([ping(PAGE,'autónoma'),ping(HEALTH,'"database":"verified"')]);
+  const [web,api]=await Promise.all([ping(PAGE,'Autónoma Dev'),ping(HEALTH,'"database":"verified"')]);
   try{
     const rows=await sql(`
        WITH counts AS (
@@ -57,7 +57,7 @@ export default {
          SELECT $1::timestamptz,$2::boolean,$3::boolean,counts.pending,counts.total,
            jsonb_build_array(CASE WHEN $2::boolean THEN 'website_ok' ELSE 'website_unavailable' END,
                              CASE WHEN $3::boolean THEN 'api_ok' ELSE 'api_unavailable' END)
-         FROM counts ON CONFLICT(slot) DO NOTHING
+         FROM counts ON CONFLICT(slot) DO UPDATE SET checked_at=now(),website_ok=EXCLUDED.website_ok,backend_ok=EXCLUDED.backend_ok,pending_leads=EXCLUDED.pending_leads,total_leads=EXCLUDED.total_leads,error_flags=EXCLUDED.error_flags
          RETURNING slot
        ) SELECT counts.pending,counts.total,(SELECT count(*) FROM inserted)::integer AS inserted FROM counts
     `,[slot,web,api]);
