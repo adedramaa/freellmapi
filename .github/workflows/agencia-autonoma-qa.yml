@@ -1,0 +1,52 @@
+name: Agencia Autónoma - Control de Seguridad
+on:
+  push:
+    branches: [agencia-autonoma-infra]
+    paths:
+      - 'agencia-autonoma/**'
+      - '.github/workflows/agencia-autonoma-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: agencia-autonoma-qa
+  cancel-in-progress: true
+jobs:
+  safe-tests:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify agency unit tests without credentials
+        run: node --test agencia-autonoma/tests/*.test.mjs
+      - name: Validate agency-only skill metadata and preserved original skills
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          names=[
+              'agencia-arquitecto','agencia-cobranzas','agencia-entregas',
+              'agencia-estimador','agencia-intake','agencia-programador',
+              'agencia-prospeccion','agencia-qa','agencia-soporte']
+          for name in names:
+              f=Path('.claude/skills')/name/'SKILL.md'
+              assert f.exists(),f
+              assert f.read_text(encoding='utf8').startswith('---\nname: '+name+'\n'),name
+          for existing in ['catalogo-editorial-raices','diseno-web-profesional']:
+              assert (Path('.claude/skills')/existing/'SKILL.md').exists()
+          print('PASS: agency 9/9, previous skills preserved')
+          PY
+      - name: Verify unsafe cross-app coupling not introduced
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files=list(Path('agencia-autonoma/neon').glob('*.mjs'))
+          assert files
+          for f in files:
+              x=f.read_text(encoding='utf8')
+              assert 'raicesregalos' not in x.lower()
+              assert 'mayor-studio' not in x.lower()
+          print('PASS: agency backend isolation')
+          PY
