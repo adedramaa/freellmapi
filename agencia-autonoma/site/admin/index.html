@@ -33,6 +33,8 @@ function card(item){
  const field=element('div');field.append(element('strong','small',k),element('div','muted',v));info.append(field);
  }
  root.append(info,element('div','details',item.details));
+ if(item.reply_draft){const draft=element('section','card');draft.style.marginTop='13px';draft.style.marginBottom='0';draft.append(element('strong','','Borrador de respuesta sin enviar'),element('p','details',item.reply_draft));const copy=element('button','secondary','Copiar respuesta');copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(item.reply_draft);status('Respuesta copiada para revisar y enviar manualmente.')}catch{status('No se pudo copiar el borrador; selecciona el texto manualmente.',true)}});draft.append(copy);root.append(draft)}
+ 
  const actions=element('div','actions');actions.style.marginTop='15px';
  async function setState(state){if(!confirm('¿Cambiar estado de la consulta a '+state+'?'))return;try{await call('/api/admin/lead/status','POST',{id:item.id,status:state});status('Estado actualizado');await load()}catch(e){status('No se pudo actualizar: '+e.message,true)}}
  if(item.status==='nuevo'){for(const [s,label] of [['calificado','Calificar'],['descartado','Descartar']]){const b=element('button','secondary',label);b.addEventListener('click',()=>setState(s));actions.append(b)}}
