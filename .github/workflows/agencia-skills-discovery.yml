@@ -1,0 +1,86 @@
+name: Claude Code - Agencia Skills Discovery
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.claude/skills/agencia-*/SKILL.md'
+      - '.github/workflows/agencia-skills-discovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Checkout committed project skills
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate all nine agency skills and existing business skills
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          expected = [
+            'agencia-arquitecto','agencia-cobranzas','agencia-entregas',
+            'agencia-estimador','agencia-intake','agencia-programador',
+            'agencia-prospeccion','agencia-qa','agencia-soporte'
+          ]
+          for name in expected:
+            path=Path('.claude/skills')/name/'SKILL.md'
+            assert path.is_file(), name
+            data=path.read_text(encoding='utf-8')
+            assert data.startswith('---\nname: '+name+'\n'), name
+            assert '\ndescription: ' in data, name
+            assert '## Seguridad global' in data, name
+          assert Path('.claude/skills/catalogo-editorial-raices/SKILL.md').is_file()
+          assert Path('.claude/skills/diseno-web-profesional/SKILL.md').is_file()
+          print('PASS: nine agency skills, two previous skills preserved.')
+          PY
+      - name: Install real Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Check that Claude Code loads all nine project skills
+        shell: bash
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+        run: |
+          set -euo pipefail
+          claude --version
+          set +e
+          timeout 75 claude -p 'Indica OK, no uses herramientas ni modifiques archivos.' \
+            --model "$ANTHROPIC_MODEL" --max-turns 1 \
+            --tools "" --disallowedTools Bash Edit Write \
+            --permission-mode plan --strict-mcp-config \
+            --no-session-persistence --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/agency-skills-init.jsonl" 2>"$RUNNER_TEMP/agency-skills-init.err"
+          set -e
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'agency-skills-init.jsonl'
+          inits=[]
+          for line in path.read_text(errors='replace').splitlines():
+            try: e=json.loads(line)
+            except ValueError: continue
+            if e.get('type')=='system' and e.get('subtype')=='init': inits.append(e)
+          assert inits, 'Claude Code did not return initialization metadata'
+          v=inits[0]
+          names=[str(x) for x in v.get('skills',[])+v.get('slash_commands',[])]
+          expected=[
+            'agencia-arquitecto','agencia-cobranzas','agencia-entregas',
+            'agencia-estimador','agencia-intake','agencia-programador',
+            'agencia-prospeccion','agencia-qa','agencia-soporte'
+          ]
+          absent=[n for n in expected if not any(n in s for s in names)]
+          print('Claude Code version:', v.get('claude_code_version'))
+          print('Recognized agency skills:',9-len(absent),'/9')
+          if absent: print('Missing:', ', '.join(absent))
+          assert not absent, 'Not all agency skills are recognized by Claude Code'
+          PY
