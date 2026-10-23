@@ -40,6 +40,47 @@ function card(item){
  if(item.status==='nuevo'){for(const [s,label] of [['calificado','Calificar'],['descartado','Descartar']]){const b=element('button','secondary',label);b.addEventListener('click',()=>setState(s));actions.append(b)}}
  if(item.status==='calificado'){const b=element('button','secondary','Marcar cotizado');b.addEventListener('click',()=>setState('cotizado'));actions.append(b)}
  if(actions.childNodes.length)root.append(actions);
+
+ if(item.quote_id && ['aprobado','enviado'].includes(item.quote_stage) && item.quote_amount_minor && item.quote_scope && item.quote_deliverables && item.quote_exclusions){
+  const approved=element('section','card');approved.style.marginTop='14px';approved.style.marginBottom='0';
+  approved.append(element('strong','','Propuesta aprobada internamente — sin enviar'));
+  const recipient=item.name,amount=money(item.quote_amount_minor,currency(item.quote_currency||item.preferred_currency));
+  const en=item.preferred_language==='en';
+  const subject=en?'Project proposal — Autónoma Dev':'Propuesta de proyecto — Autónoma Dev';
+  const parts=en?[
+    'Hello '+recipient+',',
+    'Thank you for requesting a proposal from Autónoma Dev.',
+    'SERVICE: '+item.service,
+    'SCOPE: '+item.quote_scope,
+    'DELIVERABLES: '+item.quote_deliverables,
+    'EXCLUSIONS: '+item.quote_exclusions,
+    'ESTIMATED DELIVERY: '+item.quote_days+' days after agreement and confirmed start.',
+    'INCLUDED REVISIONS: '+item.quote_revisions,
+    'QUOTED AMOUNT: '+amount+' ('+currency(item.quote_currency||item.preferred_currency)+')',
+    'This proposal is subject to written acceptance, invoicing, an agreed payment method, and confirmation that the work can be performed. No work begins until agreed conditions are met.',
+    'Please reply with questions or requested adjustments.',
+    'Autónoma Dev'
+  ]:[
+    'Hola '+recipient+',',
+    'Gracias por solicitar una propuesta a Autónoma Dev.',
+    'SERVICIO: '+item.service,
+    'ALCANCE: '+item.quote_scope,
+    'ENTREGABLES: '+item.quote_deliverables,
+    'EXCLUSIONES: '+item.quote_exclusions,
+    'PLAZO ESTIMADO: '+item.quote_days+' días desde la aceptación y comienzo acordado.',
+    'REVISIONES INCLUIDAS: '+item.quote_revisions,
+    'IMPORTE: '+amount+' ('+currency(item.quote_currency||item.preferred_currency)+')',
+    'Esta propuesta está sujeta a aceptación escrita, facturación, medio de pago acordado y confirmación de que el trabajo puede realizarse. No se inicia el desarrollo hasta cumplir las condiciones acordadas.',
+    'Responde este correo si quieres consultar o ajustar el alcance.',
+    'Autónoma Dev'
+  ];
+  const full=parts.join('\n\n');
+  const preview=element('div','details',full);preview.style.marginTop='12px';approved.append(preview);
+  const buttons=element('div','actions');buttons.style.marginTop='12px';
+  const copy=element('button','secondary','Copiar propuesta');copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(full);status('Propuesta copiada. Comprueba identidad, impuestos, método de pago y condiciones antes de enviarla.')}catch{status('No se pudo copiar; selecciona el texto de la propuesta.',true)}});
+  const mail=element('button','secondary','Preparar correo de propuesta');mail.addEventListener('click',()=>{const uri='mailto:'+encodeURIComponent(item.email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(full);window.location.href=uri});
+  buttons.append(copy,mail);approved.append(buttons);root.append(approved);
+ }
  if(item.quote_id&&['borrador','revision'].includes(item.quote_stage)){
  const box=element('div','quote-controls'),currencyInput=element('input');
  currencyInput.type='text';currencyInput.readOnly=true;currencyInput.value=currency(item.preferred_currency);
