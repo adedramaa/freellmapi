@@ -104,18 +104,20 @@ export default {
   if(input.honey)return respond({ok:true,reference:'RECIBIDO'},202,cors);
   try{
     const t=assess(input);
-    // Parameterized, single-statement atomic write: duplicate + global load gate.
+    // Parameterized, single-statement atomic write: atomic email deduplication + global load gate.
     const rows=await sql(`
       WITH gate AS (
-        SELECT (
-          (SELECT count(*) FROM agencia.leads WHERE created_at>now()-interval '10 minutes')<30
-          AND NOT EXISTS(SELECT 1 FROM agencia.leads WHERE email=$2 AND created_at>now()-interval '15 minutes')
-        ) AS permitted
+        INSERT INTO agencia.lead_submission_locks (email_hash,last_submitted_at)
+        SELECT encode(sha256(convert_to($2::text,'UTF8')),'hex'),now()
+        WHERE (SELECT count(*) FROM agencia.leads WHERE created_at > now()-interval '10 minutes') < 30
+        ON CONFLICT (email_hash) DO UPDATE SET last_submitted_at=EXCLUDED.last_submitted_at
+        WHERE agencia.lead_submission_locks.last_submitted_at < now()-interval '15 minutes'
+        RETURNING email_hash
       ),
       inserted AS (
         INSERT INTO agencia.leads(name,email,business,service,budget,details,consent_at,score,risk_flags,estimate_min_ars,estimate_max_ars,source,client_country,preferred_currency,preferred_language,budget_range_global)
         SELECT $1,$2,$3,$4,$5,$6,now(),$7::smallint,$8::jsonb,$9::integer,$10::integer,'neon-web',$11,$12,$13,$14
-        FROM gate WHERE permitted
+        FROM gate
         RETURNING id
       ),
       audit AS (
