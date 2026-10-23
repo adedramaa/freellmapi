@@ -76,8 +76,10 @@ export default {
   try{
     if(url.pathname==='/api/admin/leads'&&request.method==='GET'){
       const rows=await sql(`SELECT l.id::text,l.created_at,l.name,l.email,l.business,l.service,l.details,l.budget,l.score,l.risk_flags,l.status,l.client_country,l.preferred_currency,l.preferred_language,l.budget_range_global,
-       q.id::text AS quote_id,q.stage AS quote_stage,q.quote_currency,q.quote_amount_minor,q.approved_at
+       q.id::text AS quote_id,q.stage AS quote_stage,q.quote_currency,q.quote_amount_minor,q.approved_at,
+       comm.content AS reply_draft
        FROM agencia.leads l LEFT JOIN LATERAL (SELECT * FROM agencia.quote_drafts WHERE lead_id=l.id ORDER BY created_at DESC LIMIT 1) q ON true
+       LEFT JOIN LATERAL (SELECT content FROM agencia.client_communications WHERE lead_id=l.id AND kind='reply_draft' ORDER BY created_at DESC LIMIT 1) comm ON true
        WHERE l.source='neon-web'
        ORDER BY l.created_at DESC LIMIT 100`);
       return answer({ok:true,leads:rows},200,cors);
