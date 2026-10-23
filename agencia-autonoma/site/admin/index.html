@@ -43,7 +43,7 @@ function card(item){
 
  if(item.quote_id && ['aprobado','enviado'].includes(item.quote_stage) && item.quote_amount_minor && item.quote_scope && item.quote_deliverables && item.quote_exclusions){
   const approved=element('section','card');approved.style.marginTop='14px';approved.style.marginBottom='0';
-  approved.append(element('strong','','Propuesta aprobada internamente — sin enviar'));
+  approved.append(element('strong','',item.quote_stage==='enviado'?'Propuesta registrada como enviada':'Propuesta aprobada internamente — sin enviar'));
   const recipient=item.name,amount=money(item.quote_amount_minor,currency(item.quote_currency||item.preferred_currency));
   const en=item.preferred_language==='en';
   const subject=en?'Project proposal — Autónoma Dev':'Propuesta de proyecto — Autónoma Dev';
@@ -120,6 +120,31 @@ function card(item){
       }catch(e){status('No se pudo preparar: '+e.message,true);prepare.disabled=false}
     });
     approved.append(method,prepare);
+  }
+  if(item.quote_stage==='enviado'&&item.status==='aprobado'){
+    const group=element('section','card');group.style.marginTop='12px';group.style.marginBottom='0';
+    group.append(element('strong','','Preparación técnica — todavía sin ejecución'));
+    group.append(element('p','hint','La especificación no comparte correo ni nombre del cliente. Claude Code NO será iniciado y el trabajo sigue bloqueado hasta verificar pago, facturación y repositorio privado.'));
+    const view=element('button','secondary','Ver especificación técnica');
+    const details=element('div','details');details.hidden=true;details.style.marginTop='12px';
+    view.addEventListener('click',async()=>{
+      try{const r=await call('/api/admin/work-spec?quote_id='+encodeURIComponent(item.quote_id));
+        details.textContent=JSON.stringify(r.spec,null,2);details.hidden=false;
+        status('Especificación consultada; NO se inició ningún desarrollo.');
+      }catch(e){status('No se pudo preparar la especificación: '+e.message,true)}
+    });
+    group.append(view,details);
+    if(item.payment_state==='verified'){
+      const order=element('button','secondary','Registrar orden bloqueada');
+      order.style.marginLeft='8px';
+      order.addEventListener('click',async()=>{
+        if(!confirm('Se registrará una orden BLOQUEADA para revisión fiscal, repositorio privado y aprobación de ejecución. No se invocará Claude Code. ¿Confirmas?'))return;
+        try{const r=await call('/api/admin/work-orders/prepare','POST',{quote_id:item.quote_id,confirm_blocked:true});
+          status('Orden '+r.order_id+' registrada como bloqueada. No se ejecutó código ni se generaron cargos.');
+        }catch(e){status('No se creó la orden: '+e.message,true)}
+      });group.append(order);
+    }
+    approved.append(group);
   }
   root.append(approved);
  }
