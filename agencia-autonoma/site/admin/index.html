@@ -79,7 +79,25 @@ function card(item){
   const buttons=element('div','actions');buttons.style.marginTop='12px';
   const copy=element('button','secondary','Copiar propuesta');copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(full);status('Propuesta copiada. Comprueba identidad, impuestos, método de pago y condiciones antes de enviarla.')}catch{status('No se pudo copiar; selecciona el texto de la propuesta.',true)}});
   const mail=element('button','secondary','Preparar correo de propuesta');mail.addEventListener('click',()=>{const uri='mailto:'+encodeURIComponent(item.email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(full);window.location.href=uri});
-  buttons.append(copy,mail);approved.append(buttons);root.append(approved);
+  buttons.append(copy,mail);approved.append(buttons);
+  if(item.payment_draft_id){
+    approved.append(element('p','hint','Solicitud interna: '+item.payment_method+' · Estado '+item.payment_state+'. Este registro NO confirma una transferencia ni envía un cobro.'));
+  }else{
+    const provider=item.preferred_currency==='USD'?'arq_ach':item.preferred_currency==='EUR'?'arq_sepa':'mercadopago_ar';
+    const method=element('p','hint','Método por estudiar: '+provider+'. Confirma que tu cuenta está habilitada y que puedes facturar antes de enviar instrucciones de cobro.');
+    const prepare=element('button','secondary','Preparar solicitud interna de pago');
+    prepare.addEventListener('click',async()=>{
+      if(!confirm('Solo crearás un registro interno de pago pendiente. No se solicita dinero al cliente. ¿Continuar?'))return;
+      prepare.disabled=true;
+      try{
+        await call('/api/admin/payment/prepare','POST',{quote_id:item.quote_id,provider});
+        status('Solicitud interna creada. No se generó ningún cobro externo.');
+        await load();
+      }catch(e){status('No se pudo preparar: '+e.message,true);prepare.disabled=false}
+    });
+    approved.append(method,prepare);
+  }
+  root.append(approved);
  }
  if(item.quote_id&&['borrador','revision'].includes(item.quote_stage)){
  const box=element('div','quote-controls'),currencyInput=element('input');
