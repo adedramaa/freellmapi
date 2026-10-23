@@ -3,7 +3,7 @@
  * No dependencies, no external AI charges; database URL injected by Neon.
  * Separate "agencia" schema only. Never send credentials to the browser.
  */
-const ALLOWED_ORIGIN = 'https://autonoma-dev-agencia.onrender.com';
+const ALLOWED_ORIGINS = new Set(['https://autonoma-dev-agencia.onrender.com','https://autonoma-dev-agencia-v2.onrender.com']);
 const SERVICES = {
   web: { label:'Web comercial',min:120000,max:280000 },
   automatizacion: { label:'Automatización',min:180000,max:550000 },
@@ -65,8 +65,8 @@ function parse(data) {
 export default {
  async fetch(req) {
   const url=new URL(req.url), origin=req.headers.get('origin');
-  const cors = origin===ALLOWED_ORIGIN ? {
-    'Access-Control-Allow-Origin':ALLOWED_ORIGIN,
+  const cors = ALLOWED_ORIGINS.has(origin) ? {
+    'Access-Control-Allow-Origin':origin,
     'Access-Control-Allow-Methods':'POST, OPTIONS',
     'Access-Control-Allow-Headers':'Content-Type',
     'Access-Control-Max-Age':'600',
@@ -82,7 +82,7 @@ export default {
     }
   }
   if(url.pathname!=='/api/lead'||req.method!=='POST')return respond({error:'not_found'},404,cors);
-  if(origin!==ALLOWED_ORIGIN)return respond({error:'origin_rejected'},403,cors);
+  if(!ALLOWED_ORIGINS.has(origin))return respond({error:'origin_rejected'},403,cors);
   const ct=req.headers.get('content-type')??'';
   if(!ct.includes('application/json'))return respond({error:'content_type_required'},415,cors);
   const body=await req.text();
