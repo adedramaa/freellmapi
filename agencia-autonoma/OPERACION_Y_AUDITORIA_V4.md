@@ -192,3 +192,35 @@ Contadores Neon: **0 administradores activos, 0 consultas reales, 0 aceptaciones
 5. Validar ARQ personal/empresarial, MP y/o Binance Pay con titular, documentación, impuestos, factura E y conciliación externa. Nunca marcar pago solo por captura.
 6. Preparar repositorio privado por cliente y corredor seguro Claude Code que ejecute skills y pruebas reales, con aprobación humana y tope de consumo.
 7. Obtener clientes legítimos, medir costo y cerrar primera entrega verificable.
+
+## Ronda 23/10/2026 ~21:22 UTC: handoff seguro hacia futuro ejecutor Claude
+
+### Cambios efectivamente desplegados
+- PostgreSQL implementó `agencia.build_work_spec(quote_id)`: genera una especificación **solo a partir de una propuesta enviada y aceptada por el cliente**, con alcance, entregables, exclusiones, plazo, revisiones y bandera explícita de pago verificado. No devuelve campos directos de nombre/correo del cliente; el texto libre AÚN puede contener información personal y necesita revisión. Todas las especificaciones declaran `execution_authorized=false`.
+- PostgreSQL implementó `agencia.prepare_paid_work_order(quote_id,user_id)`: requiere administrador activo, aceptación documentada y pago marcado `verified` con evidencias. Solo crea orden en estado `blocked`; no ejecuta Claude, ni publica ni autoriza gasto. Índice parcial evita duplicar órdenes activas por cotización.
+- **Prueba transaccional reversible contra Neon:** rechazó usuario sin aprobación, rechazó orden sin pago verificado, preparó una sola orden **bloqueada** tras evidencia de pago exclusivamente sintética y rechazó duplicado. Revirtió todos los datos: 0 admins ficticios, 0 órdenes, 0 transacciones.
+- Neon Function `agenciaadmin` **despliegue 7 `completed`** publica (solo después de JWT + administrador permitido) `GET /api/admin/work-spec?quote_id=...` y `POST /api/admin/work-orders/prepare` con confirmación `confirm_blocked=true`; ambos con barreras SQL. Ninguna API invoca modelos o pagos externos.
+- Panel móvil publicado en Render servicio `srv-dbdn43m7bikc73e70420`, deploy `dep-dbdt018m7kps73bjneq0`, `live`, commit `dd42536c8568cea1655e8b7f9c39e18bbd0afe43`. Permite ver especificación técnica tras aceptación y registrar orden bloqueada si pago está verificado. Se corrigió advertencia: el alcance libre podría contener datos personales aunque se omitan los campos de contacto.
+- Código SQL versionado en `agencia-autonoma/sql/claude-handoff-2026-10-23.sql` (restauración sujeta a esquema base probado).
+- `agencia-autonoma/runner/compile-handoff.mjs`: compila un handoff **offline y sin ejecución**, asegurando permisos de propietario, repositorio privado, revisión independiente QA, habilidades declaradas, ausencia de autodeploy y de acceso a secretos. Bloquea correos, API keys y posibles identificadores sensibles en texto libre.
+- **13/13 comprobaciones locales** ejecutadas sobre el compilador (V8), incluyendo intento de alteración de banderas de ejecución, inyección de instrucciones como texto no confiable, falta de pago, repositorio público, faltantes de QA y fuga de secretos. Pruebas de Node test registradas en `compile-handoff.test.mjs`; workflow `agencia-autonoma-qa.yml` actualizado para ejecutarlas. **GitHub Actions todavía no tiene una ejecución de ese flujo confirmada**, por lo que no se debe atribuir éxito CI.
+- Sitios `/admin/`, `/en/` y API pública `/health` siguen accesibles; estado de salud: `database=verified`. Última muestra cron registrada 21:00 UTC, web/API `true`.
+- Registro final: **0 administradores propietarios activos**, **0 clientes reales**, **0 pagos**, **0 pedidos**.
+
+### Límites y riesgos abiertos
+- **No existe todavía ejecutor Claude Code para pedidos reales.** El compilador de especificaciones es una etapa previa, sin conexión a API AI, sin habilidad cargada en proceso real, sin checkout, sin PR de cliente ni despliegue.
+- El código sigue dentro de la rama de un repositorio GitHub compartido y PÚBLICO. Es fundamental aislar cada proyecto de cliente en un repositorio privado con límites, permisos y costos autorizados antes de ejecutar agentes.
+- La cuenta propietaria Neon Auth todavía no está registrada/autorizada ni probada en Android; esto impide operar el panel real desde la sesión del dueño.
+- ARQ/Binance/MP, facturación, fiscalidad de exportación, conciliación externa, avisos con pestaña cerrada y entrega/soporte siguen pendientes de verificación.
+- La limpieza antiabuso/monitoreo no equivale a un servicio de alertas de disponibilidad garantizada. Verificar ejecuciones faltantes y mantener alternativas.
+
+### Puntuación operativa ajustada
+Estimación **51% implementado, 49% pendiente**, calculada sobre el objetivo operativo completo (no estadística de producción, calidad o ingresos).
+Distribución: web/captación 19/20; panel/CRM 11/15; cotizaciones 11/15; cobros/fiscalidad 3/15; Claude 2/20; QA/entrega/monitoreo 5/10; ventas 0/5 = **51/100**.
+Creció 3 puntos sobre el 48% anterior gracias a una interfaz adicional en el panel, especificación de trabajo segura y ensayos de validación. Este avance **no presume clientes ni ingresos**.
+
+### Condiciones exactas del siguiente gran incremento
+1. Alta verificada del propietario (sin compartir contraseña) y ensayo de toda la bandeja móvil con rol autorizado.
+2. Repo privado separado, credenciales para Claude Code apropiadas y ejecución autorizada con límites de herramientas/costo, skills cargadas, PR y pruebas.
+3. Cobro internacional legítimo, conciliación verificable, cumplimiento ARCA/BCRA y factura correspondiente.
+4. Envío de propuesta y comunicaciones legalmente consistentes; soporte, backups, reversión y entrega demostrada.
