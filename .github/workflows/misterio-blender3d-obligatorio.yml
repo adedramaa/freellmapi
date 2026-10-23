@@ -7,6 +7,10 @@ on:
       - 'fabrica_free/blender_noir_3d.py'
       - 'fabrica_free/subtitles_narrator3d.py'
       - '.github/workflows/misterio-blender3d-obligatorio.yml'
+  pull_request:
+    branches: [fabrica-gratis-prototipo]
+    types: [opened, synchronize, reopened]
+    paths: ['fabrica_free/trigger_blender3d.md', '.github/workflows/misterio-blender3d-obligatorio.yml']
   workflow_dispatch:
     inputs:
       mode:
@@ -22,7 +26,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verdadero-blender-3d:
-    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/fabrica-gratis-prototipo'
+    if: github.repository == 'adedramaa/freellmapi' && (github.ref == 'refs/heads/fabrica-gratis-prototipo' || (github.event_name == 'pull_request' && github.base_ref == 'fabrica-gratis-prototipo'))
     runs-on: ubuntu-24.04
     timeout-minutes: 80
     steps:
