@@ -73,7 +73,14 @@ export default {
     'Vary':'Origin'
   } : {'Vary':'Origin'};
   if(req.method==='OPTIONS') return new Response(null,{status:204,headers:cors});
-  if(url.pathname==='/health'&&req.method==='GET')return respond({ok:true,service:'autonoma-dev-intake',database:'configured'},200,cors);
+  if(url.pathname==='/health'&&req.method==='GET') {
+    try {
+      await sql('SELECT count(*) FROM agencia.leads');
+      return respond({ok:true,service:'autonoma-dev-intake',database:'verified'},200,cors);
+    } catch {
+      return respond({ok:false,service:'autonoma-dev-intake',database:'unavailable'},503,cors);
+    }
+  }
   if(url.pathname!=='/api/lead'||req.method!=='POST')return respond({error:'not_found'},404,cors);
   if(origin!==ALLOWED_ORIGIN)return respond({error:'origin_rejected'},403,cors);
   const ct=req.headers.get('content-type')??'';
