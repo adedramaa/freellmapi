@@ -91,7 +91,8 @@ export default {
     }
     if(request.method==='GET'&&url.pathname==='/api/admin/metrics'){
       const rows=await sql(`SELECT count(*) FILTER (WHERE status='nuevo')::integer AS nuevos,count(*) FILTER (WHERE status='calificado')::integer AS calificados,count(*) FILTER (WHERE preferred_currency='USD')::integer AS usd,count(*) FILTER (WHERE preferred_currency='EUR')::integer AS eur,count(*)::integer AS total FROM agencia.leads WHERE source='neon-web'`);
-      return answer({ok:true,metrics:rows[0]},200,cors);
+      const monitor=await sql('SELECT slot,checked_at,website_ok,backend_ok,pending_leads,total_leads FROM agencia.monitor_snapshots ORDER BY checked_at DESC LIMIT 1');
+      return answer({ok:true,metrics:rows[0],monitor:monitor[0]||null},200,cors);
     }
     if(request.method==='POST'&&url.pathname==='/api/admin/lead/status'){
       const body=await request.text();if(body.length>2200)return answer({error:'too_large'},413,cors);
