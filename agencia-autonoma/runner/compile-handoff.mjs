@@ -12,9 +12,9 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function validText(value,max){return typeof value==='string'&&value.trim().length>=12&&value.length<=max}
 function mayContainPrivateData(value){
  if(typeof value!=='string')return false;
- return /[\\w.+-]+@[\\w.-]+\\.[a-z]{2,}/i.test(value) ||
-  /\\b(?:api[_\\s-]?key|auth[_\\s-]?token|password|contraseña|client[_\\s-]?secret)\\s*[:=]\\s*[^\\s,;]{4,}/i.test(value) ||
-  /\\b(?:dni|cuit|passport|pasaporte|credit[_\\s-]?card|tarjeta)\\s*[:=#]?\\s*\\d{7,}/i.test(value);
+ return /[\w.+-]+@[\w.-]+\.[a-z]{2,}/i.test(value) ||
+  /\b(?:api[_\s-]?key|auth[_\s-]?token|password|contraseña|client[_\s-]?secret)\s*[:=]\s*[^\s,;]{4,}/i.test(value) ||
+  /\b(?:dni|cuit|passport|pasaporte|credit[_\s-]?card|tarjeta)\s*[:=#]?\s*\d{7,}/i.test(value);
 }
 export function assessHandoff(spec){
  const blockers=[];
