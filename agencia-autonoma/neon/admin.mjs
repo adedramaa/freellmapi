@@ -82,9 +82,11 @@ export default {
        q.scope_json->>'exclusiones' AS quote_exclusions,
        q.scope_json->>'plazo_dias' AS quote_days,
        q.scope_json->>'revisiones_incluidas' AS quote_revisions,
+       pay.id::text AS payment_draft_id,pay.provider AS payment_method,pay.state AS payment_state,
        comm.content AS reply_draft
        FROM agencia.leads l LEFT JOIN LATERAL (SELECT * FROM agencia.quote_drafts WHERE lead_id=l.id ORDER BY created_at DESC LIMIT 1) q ON true
        LEFT JOIN LATERAL (SELECT content FROM agencia.client_communications WHERE lead_id=l.id AND kind='reply_draft' ORDER BY created_at DESC LIMIT 1) comm ON true
+       LEFT JOIN LATERAL (SELECT id,provider,state FROM agencia.payment_intents WHERE lead_id=l.id AND state NOT IN ('cancelled','rejected','refunded') ORDER BY created_at DESC LIMIT 1) pay ON true
        WHERE l.source='neon-web'
        ORDER BY l.created_at DESC LIMIT 100`);
       return answer({ok:true,leads:rows},200,cors);
@@ -135,6 +137,39 @@ export default {
         FROM upd RETURNING id
       ) SELECT id::text,stage FROM upd`,[v.id,v.currency,String(amount),v.stage,user,scope,deliverables,exclusions,days,revisions]);
       return rows.length?answer({ok:true,stage:rows[0].stage},200,cors):answer({error:'quote_review_denied'},409,cors);
+    }
+    // This creates only a local draft, NEVER a payment or a provider request.
+    if(request.method==='POST'&&url.pathname==='/api/admin/payment/prepare'){
+      const txt=await request.text();
+      if(txt.length>1200)return answer({error:'too_large'},413,cors);
+      let payload;try{payload=JSON.parse(txt)}catch{return answer({error:'bad_json'},400,cors)}
+      const quoteId=payload?.quote_id,provider=payload?.provider;
+      const rules={USD:['arq_ach'],EUR:['arq_sepa'],ARS:['mercadopago_ar']};
+      if(typeof quoteId!=='string'||!/^[0-9a-f-]{36}$/i.test(quoteId)
+         ||!['arq_ach','arq_sepa','mercadopago_ar'].includes(provider))
+         return answer({error:'invalid_request'},400,cors);
+      const rows=await sql(`WITH ready AS (
+        SELECT q.id,q.lead_id,q.quote_currency,q.quote_amount_minor
+        FROM agencia.quote_drafts q JOIN agencia.leads l ON l.id=q.lead_id
+        WHERE q.id=$1::uuid AND q.stage='aprobado' AND q.quote_amount_minor>0
+          AND q.quote_currency=CASE $2 WHEN 'arq_ach' THEN 'USD' WHEN 'arq_sepa' THEN 'EUR' ELSE 'ARS' END
+          AND l.source='neon-web'
+          AND length(coalesce(q.scope_json->>'alcance_acordado',''))>=25
+          AND length(coalesce(q.scope_json->>'entregables',''))>=20
+          AND length(coalesce(q.scope_json->>'exclusiones',''))>=10
+      ), ins AS (
+        INSERT INTO agencia.payment_intents(lead_id,quote_id,provider,currency,amount_minor,state)
+        SELECT lead_id,id,$2,quote_currency,quote_amount_minor,'draft' FROM ready
+        ON CONFLICT DO NOTHING
+        RETURNING id,lead_id,provider,currency,amount_minor,state
+      ), audit AS (
+        INSERT INTO agencia.events(lead_id,event_type,actor,data)
+        SELECT lead_id,'payment_draft_prepared',$3,jsonb_build_object('method',provider,'currency',currency,'amount_minor',amount_minor,'external_request_sent',false)
+        FROM ins RETURNING id
+      )
+      SELECT id::text,provider,currency,amount_minor::text,state FROM ins`,[quoteId,provider,user]);
+      return rows.length ? answer({ok:true,draft:rows[0],external_charge:false},201,cors)
+                         : answer({error:'quote_or_payment_state_conflict'},409,cors);
     }
     return answer({error:'not_found'},404,cors);
   }catch(e){console.error('admin_error',e?.name||'unknown');return answer({error:'backend_unavailable'},503,cors)}
