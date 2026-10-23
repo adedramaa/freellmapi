@@ -196,6 +196,26 @@ export default {
       return rows.length ? answer({ok:true,draft:rows[0],external_charge:false},201,cors)
                          : answer({error:'quote_or_payment_state_conflict'},409,cors);
     }
+    if(request.method==='GET'&&url.pathname==='/api/admin/work-spec'){
+      const id=url.searchParams.get('quote_id')||'';
+      if(!/^[0-9a-f-]{36}$/i.test(id))return answer({error:'invalid_quote_id'},400,cors);
+      const row=await sql('SELECT agencia.build_work_spec($1::uuid) AS spec',[id]);
+      let spec=row[0]?.spec;
+      if(typeof spec==='string'){try{spec=JSON.parse(spec)}catch{return answer({error:'invalid_spec'},503,cors)}}
+      if(!spec)return answer({error:'accepted_quote_required'},409,cors);
+      return answer({ok:true,spec,execution_authorized:false},200,cors);
+    }
+    if(request.method==='POST'&&url.pathname==='/api/admin/work-orders/prepare'){
+      const raw=await request.text();
+      if(raw.length>800)return answer({error:'too_large'},413,cors);
+      let v;try{v=JSON.parse(raw)}catch{return answer({error:'bad_json'},400,cors)}
+      if(!/^[0-9a-f-]{36}$/i.test(v?.quote_id||'')||v?.confirm_blocked!==true)
+        return answer({error:'owner_confirmation_required'},400,cors);
+      const result=await sql('SELECT agencia.prepare_paid_work_order($1::uuid,$2::text) AS order_id',[v.quote_id,user]);
+      return result[0]?.order_id
+        ?answer({ok:true,order_id:result[0].order_id,execution_authorized:false,status:'blocked'},201,cors)
+        :answer({error:'already_prepared_or_not_eligible'},409,cors);
+    }
     return answer({error:'not_found'},404,cors);
   }catch(e){console.error('admin_error',e?.name||'unknown');return answer({error:'backend_unavailable'},503,cors)}
  }
