@@ -124,30 +124,51 @@ phone_light=light("Iluminacion animada movil",(-2.70,-1.16,1.65),75,.75,(.45,.72
 for t,e in [(0,9),(1.5,40),(2.8,85),(3.7,24),(4.8,100),(5.65,28),(8,45)]:
     key(phone_light.data,"energy",t,e)
 
-# Human actor model (Vera): silent, mouth does not move, ACTS inside the story.
-root=bpy.data.objects.new("ACTRIZ Vera animada 3D",None);bpy.context.collection.objects.link(root)
+# VERA: licensed real female rigged human mesh, NO cubes, NO spheres as a stand-in.
+# Model: Quaternius Universal Base Characters (CC0), sourced separately.
+import os
+fem_path=Path(os.environ.get("VERA_FBX","fabrica_free/assets/Superhero_Female_FullBody.fbx"))
+if not fem_path.is_file() or fem_path.stat().st_size<250000:
+    raise RuntimeError("Se exige el personaje 3D articulado femenino CC0; no se permite un personaje de cubos")
+before=set(bpy.data.objects.keys())
+bpy.ops.import_scene.fbx(filepath=str(fem_path.resolve()),use_anim=True)
+imported=[o for o in bpy.data.objects if o.name not in before]
+character_meshes=[o for o in imported if o.type=="MESH"]
+character_rigs=[o for o in imported if o.type=="ARMATURE"]
+if not character_meshes or not character_rigs:
+    raise RuntimeError("El modelo de Vera debe tener malla real y armadura Blender. No placeholders.")
+root=bpy.data.objects.new("VERA ACTRIZ CON RIG REAL (SILENCIOSA)",None)
+bpy.context.collection.objects.link(root)
+roots=[o for o in imported if o.parent not in imported]
+for o in roots:
+    o.parent=root
+    o.matrix_parent_inverse=root.matrix_world.inverted()
+for o in character_meshes:
+    for face in o.data.polygons:
+        face.use_smooth=True
+bpy.context.view_layer.update()
+coords=[o.matrix_world @ Vector(pt) for o in character_meshes for pt in o.bound_box]
+height=max(pt.z for pt in coords)-min(pt.z for pt in coords)
+if height<=.001: raise RuntimeError("Malla de Vera tiene altura inválida")
+scale=1.73/height
+root.scale=(scale,scale,scale)
 root.location=(-1.65,.14,0)
-body=box("Vera abrigo",(-1.65,.14,1.02),(.50,.34,.78),cloth,.12)
-head=sphere("Vera cabeza",(-1.65,.10,1.57),.27,skin)
-hair1=sphere("Cabello oscuro Vera",(-1.65,.21,1.73),.286,hair)
-hair1.scale=(1,.83,.58)
-ponytail=sphere("Coleta Vera",(-1.65,.43,1.59),.15,hair)
-leftarm=box("Vera brazo derecho",(-1.99,-.13,1.07),(.20,.21,.6),cloth,.085)
-rightarm=box("Vera brazo izquierdo",(-1.31,-.13,1.07),(.20,.21,.6),cloth,.085)
-hand=sphere("Mano Vera que toma telefono",(-1.99,-.13,.76),.11,skin)
-leg1=box("Pierna Vera 1",(-1.82,.15,.40),(.23,.26,.68),black,.035)
-leg2=box("Pierna Vera 2",(-1.48,.15,.40),(.23,.26,.68),black,.035)
-for part in [body,head,hair1,ponytail,leftarm,rightarm,hand,leg1,leg2]:
-    parent_to(part,root)
-# First she reacts; later she physically walks to desk.
+# Physical character travels across the actual 3D room, synchronised with narrated action.
 for t,pos in [(0,(-1.65,.14,-.27)),(2.0,(-1.65,.14,-.27)),(2.7,(-1.65,.14,0)),
   (7.0,(-1.65,.14,0)),(18.8,(-1.65,.14,0)),(19.7,(-.65,-.05,0)),
   (20.7,(.48,-.28,0)),(21.3,(1.18,-.30,0)),(32,(1.18,-.30,0))]:
     key(root,"location",t,pos)
 for t,ang in [(0,-.23),(1.5,-.23),(2.75,0),(18.7,0),(19.2,-.12),(20,.12),
-  (20.7,-.09),(21.3,0)]: key(root,"rotation_euler",t,(0,0,ang))
-for t,ang in [(0,0),(2.8,0),(4.0,-.45),(5.3,-.2),(18.7,0),(21.2,-.30)]:
-    key(leftarm,"rotation_euler",t,(0,ang,0))
+  (20.7,-.09),(21.3,0)]:
+    key(root,"rotation_euler",t,(0,0,ang))
+for armature in character_rigs:
+    for pose in armature.pose.bones:
+        name=pose.name.lower()
+        if any(x in name for x in ("head","neck")):
+            pose.rotation_mode="XYZ"
+            for t,ang in [(0,-.12),(2.8,.08),(7,-.11),(17,.03),(21,.1),(29,.15),(32,.25)]:
+                key(pose,"rotation_euler",t,(ang,0,0))
+            break
 
 # Desk, an ANIMATED drawer and a physical clue inside.
 box("Escritorio madera", (1.35,.60,1.03),(2.15,1.1,.14),wood,.035)
