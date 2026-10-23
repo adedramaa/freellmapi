@@ -73,3 +73,26 @@
 6. Repetir el circuito sin fallos críticos y con datos de control completos.
 
 La meta está en curso, **no terminada 100 %**. Esta bitácora impide que publicación de sitio, schema o skill se confundan con operación monetizable completa.
+
+## Auditoría incremental posterior — 23/10/2026
+
+- Panel móvil: `/admin/` ahora solicita JWT mediante `auth.getJWTToken()` del SDK oficial de Neon. Añadidos alcance, entregables, exclusiones, duración, revisiones y aprobación interna del presupuesto; edición restringida a admin permitido. Los envíos externos siguen manuales. Incluye abrir borrador por `mailto:` y exportar las 100 últimas consultas visibles en CSV (este archivo NO es backup integral).
+- API privada `agenciaadmin` redeploy completado; HTML de panel publicado por Render. Nunca aparece una cuenta dueña predeterminada.
+- Pruebas unitarias manuales con falsos objetos de Request/Response: 12/12 validaciones de rechazo de inputs, CORS y falta de autenticación superadas. Es distinto de 12 sesiones reales de producción.
+- PostgreSQL añade `agencia.work_orders` y `agencia.work_order_events`. También se reforzó `agencia.payment_intents` (moneda+importe igual al presupuesto aprobado; transiciones restringidas; comprobantes/documentación cuando corresponda) y la función `agencia.guard_lead_lifecycle` (solo producción con orden y pago verificados, entrega con QA firmado).
+- Prueba reversible contra Neon completó una simulación de flujo de una orden de prueba: lead→presupuesto→pago sintético marcado para QA→orden→plan→desarrollo→QA→aprobación→entrega. Bloqueó orden sin pago y salto a QA sin evidencia. **Se revirtieron todas las inserciones**: 0 intentos de pago reales/0 órdenes/0 leads de esa prueba.
+- Backup de estructura de reglas: `sql/snapshot-triggers-2026-10-23.sql`; no incluye secretos ni datos reales.
+- CI GitHub Actions de agencia sigue sin ejecuciones observadas; no se debe declarar ejecutor Claude Code validado.
+- Estado última consulta a Neon: 0 administradores activos, 0 leads comerciales, 0 payment intents, 0 work orders, 0 comunicaciones enviadas.
+
+### Porcentaje estimado al final de esta intervención
+
+**40 % implementado / 60 % pendiente**, estimación operativa orientativa. El cálculo no es telemetría: web y captación están mayoritariamente terminadas, pero autenticación real del propietario, avisos, facturación y cobro, ejecución autónoma Claude Code, entrega certificada, marketing y ventas aún no cumplen criterios de aceptación.
+
+### Bloqueantes directos
+
+1. Propietario debe crear su cuenta en `https://autonoma-dev-agencia-v2.onrender.com/admin/` y confirmar su UUID; autorizarla solo con evidencia segura. No pedir contraseña en chat.
+2. Neon Auth: verificación de correo, SMTP y localhost para producción; probar sesión real y autorización de primer usuario.
+3. Cobros: tipo de ARQ Personal/Business, Binance Merchant si aplica, habilitación MP y obligaciones ARCA/BCRA, verificación independiente de transacciones.
+4. Runner Claude Code aislado y autorizado con 9 skills realmente cargadas, tests y PR, sin permitir despliegues autónomos no aprobados.
+5. Avisos de leads: 5/5 automations del usuario ocupadas; configurar alternativa autorizada sin sustituir recordatorios ajenos. Servicio de email verificado.
