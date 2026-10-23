@@ -24,6 +24,19 @@ jobs:
         run: node --test agencia-autonoma/tests/*.test.mjs
       - name: Validate isolated agent handoff without calling AI or payment providers
         run: node --test agencia-autonoma/runner/*.test.mjs
+      - name: Produce and verify offline fictional website artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          node agencia-autonoma/runner/build-preview.mjs --demo --output "$RUNNER_TEMP/agency-fictional-demo"
+          node agencia-autonoma/runner/build-preview.mjs --verify "$RUNNER_TEMP/agency-fictional-demo"
+      - name: Preserve read-only fictional demo proof for manual review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: agency-fictional-demo
+          path: ${{ runner.temp }}/agency-fictional-demo/
+          if-no-files-found: error
+          retention-days: 1
       - name: Validate agency-only skill metadata and preserved original skills
         run: |
           python3 - <<'PY'
