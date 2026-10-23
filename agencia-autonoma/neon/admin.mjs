@@ -100,13 +100,23 @@ export default {
       return rows.length?answer({ok:true,status:rows[0].status},200,cors):answer({error:'transition_not_allowed'},409,cors);
     }
     if(request.method==='POST'&&url.pathname==='/api/admin/quote/review'){
-      const body=await request.text();if(body.length>2200)return answer({error:'too_large'},413,cors);
+      const body=await request.text();if(body.length>6000)return answer({error:'too_large'},413,cors);
       let v;try{v=JSON.parse(body)}catch{return answer({error:'bad_json'},400,cors)}
       if(!/^[0-9a-f-]{36}$/i.test(v.id||'')||!CURRENCIES.has(v.currency)||!MONEY.test(String(v.amount_minor??''))||!['revision','aprobado'].includes(v.stage))return answer({error:'invalid_quote'},400,cors);
       const amount=Number(v.amount_minor);if(!Number.isSafeInteger(amount)||amount<1||amount>100000000000)return answer({error:'amount_limit'},400,cors);
+      const scope=typeof v.scope==='string'?v.scope.trim():'';
+      const deliverables=typeof v.deliverables==='string'?v.deliverables.trim():'';
+      const exclusions=typeof v.exclusions==='string'?v.exclusions.trim():'';
+      const days=Number(v.delivery_days),revisions=Number(v.revisions);
+      if(scope.length<25||scope.length>1200||deliverables.length<12||deliverables.length>800||
+        exclusions.length>500||!Number.isInteger(days)||days<1||days>180||
+        !Number.isInteger(revisions)||revisions<0||revisions>8) return answer({error:'scope_incomplete'},400,cors);
+      if(v.stage==='aprobado' && (deliverables.length<20 || exclusions.length<10))
+        return answer({error:'approval_requires_scope_and_exclusions'},400,cors);
       const rows=await sql(`WITH upd AS (
         UPDATE agencia.quote_drafts q SET
           quote_currency=$2,quote_amount_minor=$3::bigint,stage=$4,
+          scope_json=q.scope_json || jsonb_build_object('alcance_acordado',$6,'entregables',$7,'exclusiones',$8,'plazo_dias',$9::integer,'revisiones_incluidas',$10::integer,'es_precio_final',false,'requiere_revision_humana',true),
           approved_by=CASE WHEN $4='aprobado' THEN $5 ELSE NULL END,
           approved_at=CASE WHEN $4='aprobado' THEN now() ELSE NULL END
         WHERE q.id=$1::uuid
@@ -117,7 +127,7 @@ export default {
         INSERT INTO agencia.events(lead_id,event_type,actor,data)
         SELECT lead_id,'quote_reviewed',$5,jsonb_build_object('stage',stage,'currency',$2,'amount_minor',$3::bigint)
         FROM upd RETURNING id
-      ) SELECT id::text,stage FROM upd`,[v.id,v.currency,String(amount),v.stage,user]);
+      ) SELECT id::text,stage FROM upd`,[v.id,v.currency,String(amount),v.stage,user,scope,deliverables,exclusions,days,revisions]);
       return rows.length?answer({ok:true,stage:rows[0].stage},200,cors):answer({error:'quote_review_denied'},409,cors);
     }
     return answer({error:'not_found'},404,cors);
