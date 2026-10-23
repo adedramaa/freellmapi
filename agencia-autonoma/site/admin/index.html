@@ -67,9 +67,9 @@ el('signup').addEventListener('click',async()=>{const email=el('email').value,pa
 function downloadCsv(){
   if(!leads.length){status('Todavía no hay consultas para exportar.');return}
   const columns=['id','created_at','name','email','business','service','client_country','preferred_currency','preferred_language','budget','budget_range_global','score','status','details'];
-  const safe=v=>{let s=String(v??'');if(/^[\\s]*[=+@\\-\\t\\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"'};
-  const csv=[columns.join(','),...leads.map(row=>columns.map(col=>safe(row[col])).join(','))].join('\\r\\n');
-  const blob=new Blob(['\\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const safe=v=>{let s=String(v??'');if(/^[\s]*[=+@\-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"'};
+  const csv=[columns.join(','),...leads.map(row=>columns.map(col=>safe(row[col])).join(','))].join(String.fromCharCode(13,10));
+  const blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8'});
   const u=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=u;a.download='autonoma-dev-consultas-'+new Date().toISOString().slice(0,10)+'.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);
   status('Exportación lista. Contiene datos personales; guarda el archivo de forma segura. No sustituye un respaldo completo de la base.');
