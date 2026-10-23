@@ -1,0 +1,99 @@
+name: Claude Code - Design Toolkit Verification
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/claude-design-toolkit-verify.yml'
+      - '.claude/settings.json'
+      - '.claude/agents/**'
+      - '.claude/skills/diseno-web-profesional/**'
+      - '.claude/design-references.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-design-toolkit-verify
+  cancel-in-progress: false
+
+jobs:
+  verify-design:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Read project without write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify settings, local skill and agents
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          s=json.loads(Path('.claude/settings.json').read_text())
+          expected={
+            'anthropic-agent-skills':'anthropics/skills',
+            'taste-skill':'Leonxlnx/taste-skill',
+            'ui-ux-pro-max-skill':'nextlevelbuilder/ui-ux-pro-max-skill',
+            'impeccable':'pbakaus/impeccable'
+          }
+          for market,repo in expected.items():
+              assert s['extraKnownMarketplaces'][market]['source']=={'source':'github','repo':repo}
+          for key in ['document-skills@anthropic-agent-skills','example-skills@anthropic-agent-skills',
+                      'taste-skill@taste-skill','ui-ux-pro-max@ui-ux-pro-max-skill','impeccable@impeccable']:
+              assert s['enabledPlugins'].get(key) is True, key
+          for name in ['design-director','frontend-implementer','visual-auditor']:
+              p=Path(f'.claude/agents/{name}.md')
+              assert p.is_file() and p.read_text().startswith('---\n'), name
+          assert Path('.claude/skills/diseno-web-profesional/SKILL.md').is_file()
+          assert Path('.claude/skills/catalogo-editorial-raices/SKILL.md').is_file()
+          assert Path('.claude/design-references.md').is_file()
+          print('PASS: 3 plugins visuales, 1 protocolo, 1 banco de referencias y 3 subagentes.')
+          PY
+
+      - name: Verify free prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          python3 --version
+          node -e "let n=Number(process.versions.node.split('.')[0]);if(n<22) process.exit(1)"
+          if command -v google-chrome >/dev/null; then google-chrome --version; else echo 'WARN: navegador Chrome no disponible; prueba visual real pendiente'; fi
+
+      - name: Install official Claude Code on isolated runner
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+      - name: Install and list the design plugins in this runner
+        shell: bash
+        env:
+          DISABLE_TELEMETRY: '1'
+          DO_NOT_TRACK: '1'
+        run: |
+          set -euo pipefail
+          claude --version
+          claude plugin marketplace add anthropics/skills
+          claude plugin marketplace add Leonxlnx/taste-skill
+          claude plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
+          claude plugin marketplace add pbakaus/impeccable
+          claude plugin install document-skills@anthropic-agent-skills --scope project
+          claude plugin install example-skills@anthropic-agent-skills --scope project
+          claude plugin install taste-skill@taste-skill --scope project
+          claude plugin install ui-ux-pro-max@ui-ux-pro-max-skill --scope project
+          claude plugin install impeccable@impeccable --scope project
+          claude plugin list | tee "$RUNNER_TEMP/design-plugins.txt"
+          for name in 'taste-skill@taste-skill' 'ui-ux-pro-max@ui-ux-pro-max-skill' 'impeccable@impeccable'; do
+            grep -F "$name" "$RUNNER_TEMP/design-plugins.txt"
+          done
+          echo 'PASS: Claude Code design plugins installed in ephemeral runner.'
+
+      - name: Confirm no auto publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Read-only job: no API/model secret, git push or production deploy.'
