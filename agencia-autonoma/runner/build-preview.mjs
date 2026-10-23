@@ -36,6 +36,12 @@ export function qaHtml(html) {
     no_script: !/<script\b/i.test(html) && !/javascript\s*:/i.test(html),
     no_network_dependencies: !/https?:\/\//i.test(html) && !/@import\b/i.test(html),
     no_forms_or_passwords: !/<form\b|<input\b|type\s*=\s*["']password/i.test(html),
+    no_inline_handlers: !/\s+on[a-z][a-z0-9_-]*\s*=/i.test(html),
+    no_embedded_content: !/<(?:iframe|object|embed|svg|audio|video|link)\b/i.test(html) &&
+      !/<meta[^>]*http-equiv\s*=\s*["']?refresh\b/i.test(html),
+    no_css_fetch_or_protocol_relative: !/\burl\s*\(/i.test(html) &&
+      !/(?:src|href)\s*=\s*["']\s*\/\//i.test(html),
+    no_unsafe_url_schemes: !/(?:src|href)\s*=\s*["']\s*(?:data:|blob:|file:)/i.test(html),
     semantic_markup: /<main\b/i.test(html) && /<h1\b/i.test(html) && /<footer\b/i.test(html),
     accessible_focus: /:focus-visible/.test(html),
     mobile_css: /@media\s*\(max-width:\s*640px\)/i.test(html),
@@ -64,9 +70,12 @@ export function buildSyntheticFiles() {
     'The placeholder payment flag in test data is NOT evidence of any transaction.\n' +
     'Generated with a deterministic, offline script. Claude Code was NOT invoked.\n' +
     'Do not deploy or hand over as a commercial job without separate approval.\n';
+  const qaReport = JSON.stringify(qa,null,2)+'\n';
+  manifest.sha256_qa_report=sha256(qaReport);
+  manifest.sha256_readme=sha256(readme);
   return {
     'index.html': html,
-    'qa-report.json': JSON.stringify(qa,null,2)+'\n',
+    'qa-report.json': qaReport,
     'manifest.json': JSON.stringify(manifest,null,2)+'\n',
     'README.md': readme
   };
@@ -86,12 +95,20 @@ export async function verifyDemo(directory) {
   const target = resolve(directory);
   const html = await readFile(join(target,'index.html'),'utf8');
   const manifest = JSON.parse(await readFile(join(target,'manifest.json'),'utf8'));
+  const qaReportText=await readFile(join(target,'qa-report.json'),'utf8');
+  const readmeText=await readFile(join(target,'README.md'),'utf8');
+  const qaReport=JSON.parse(qaReportText);
   const qa = qaHtml(html);
   const ok = manifest.kind==='synthetic_static_preview_v1' &&
     manifest.fictional===true && manifest.actual_customer===false &&
     manifest.claude_executed===false && manifest.published===false &&
     manifest.bank_payment_verified===false &&
-    qa.passed && manifest.sha256_html===sha256(html);
+    qa.passed && qaReport.passed===true &&
+    JSON.stringify(qaReport.checks)===JSON.stringify(qa.checks) &&
+    manifest.quality_checks_passed===Object.keys(qa.checks).length &&
+    manifest.sha256_html===sha256(html) &&
+    manifest.sha256_qa_report===sha256(qaReportText) &&
+    manifest.sha256_readme===sha256(readmeText);
   if(!ok)throw new Error('Artifact validation failed (tampered or unsafe)');
   return {ok:true, directory:target, sha256_html:sha256(html), checks:Object.keys(qa.checks).length,
     files:['index.html','qa-report.json','manifest.json','README.md']};
