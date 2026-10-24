@@ -72,7 +72,7 @@ test('rejects unknown extension and known secret patterns before export',async()
  await writeFile(path,'SENSITIVE=no');
  await assert.rejects(buildPrivateSeed(opts(ctx)),/unexpected_extension/);
  await rm(path);
- await writeFile(join(ctx.source,'agencia-autonoma/neon/index.mjs'),'const fake="ghp_abcdefghijklmnopqrstuvwxyz123456";');
+ await writeFile(join(ctx.source,'agencia-autonoma/neon/index.mjs'),'const fake="gh'+'p_abcdefghijklmnopqrstuvwxyz123456";');
  await assert.rejects(buildPrivateSeed(opts(ctx)),/possible_secret_in_source/);
  await assert.rejects(lstat(ctx.output),{code:'ENOENT'});
 }));
