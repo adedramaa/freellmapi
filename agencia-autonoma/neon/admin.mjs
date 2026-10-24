@@ -203,6 +203,20 @@ export default {
       return rows.length ? answer({ok:true,draft:rows[0],external_charge:false},201,cors)
                          : answer({error:'quote_or_payment_state_conflict'},409,cors);
     }
+    // Read-only owner preflight. Does not send code, client PII or API keys to GitHub.
+    // Even a clean DB preflight CANNOT authorize dispatch: independent repo privacy,
+    // payment evidence, spending quota, and a restricted private runner must be checked.
+    if(request.method==='GET'&&url.pathname==='/api/admin/work-orders/preflight'){
+      const orderId=url.searchParams.get('order_id')||'';
+      if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId))
+        return answer({error:'invalid_work_order_id'},400,cors);
+      const rows=await sql('SELECT agencia.get_dispatch_readiness($1::uuid,$2::text) AS review',[orderId,user]);
+      let review=rows[0]?.review;
+      if(typeof review==='string'){try{review=JSON.parse(review)}catch{return answer({error:'invalid_review'},503,cors)}}
+      if(review?.ok!==true)
+        return answer({error:review?.code||'not_available'},review?.code==='order_not_found'?404:403,cors);
+      return answer({ok:true,review,execution_authorized:false,dispatched:false},200,cors);
+    }
     if(request.method==='GET'&&url.pathname==='/api/admin/work-spec'){
       const id=url.searchParams.get('quote_id')||'';
       if(!/^[0-9a-f-]{36}$/i.test(id))return answer({error:'invalid_quote_id'},400,cors);
