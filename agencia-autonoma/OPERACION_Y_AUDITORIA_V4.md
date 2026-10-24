@@ -342,3 +342,20 @@ Abrir `https://autonoma-dev-agencia-v2.onrender.com/admin/`, acceder con Google 
 - **Evidencia de ejecución GitHub:** 0 runs para SHA `c3e5e6771c2cf885d07decd36c6d28ed7807a23e` y 0 runs para SHA `8045975505f012d625d14e3452904153fd15b224`. La lista general de ejecuciones devuelve como más reciente un run del 22/10, y un run había permanecido `queued`. Esto indica ausencia de arranque confirmado, **sin determinar la causa** (podrían intervenir la configuración, la disponibilidad o restricciones de Actions).
 - **Resultado:** el CLI oficial quedó preparado para ejecutar una prueba segura, pero no se ejecutó. No se modificó código con Claude, no hay PR ni pruebas CI nuevas aprobadas, ningún cliente o pago se afectó. El máximo real de avance con evidencia operativa continúa en **62% estimado, 38% pendiente**; **no se suman puntos** por un runner no ejecutado.
 - Para disparar el workflow desde Android: `https://github.com/adedramaa/freellmapi/actions/workflows/agencia-claude-smoke.yml` → `Run workflow` en rama `main`; luego examinar el run y el artefacto. Si el control no aparece, revisar habilitación y cuotas de Actions en la cuenta; no inventar que el run ocurre automáticamente.
+
+## 24/10/2026 02:07 UTC — ejecución REAL y exitosa de Claude Code
+
+**Evidencia primaria:** GitHub Actions run `40052784337` (`Agencia - Claude Code sintético y auditado`), URL https://github.com/adedramaa/freellmapi/actions/runs/40052784337, estado `completed / success`, evento `workflow_dispatch` disparado por el propietario. Job `claude-code-proof`: todas las tareas `success`, incluyendo instalación de CLI, ejecución real del CLI, auditoría de Read/Edit, pruebas de Node y artefacto.
+
+**Evidencia de código:** El artefacto de GitHub `agency-claude-synthetic-review` (ID `12543803667`, 782 bytes, expira 25/10/2026 02:07 UTC) se descargó y abrió. Incluye `audit.json` con `ok=true`, `tools=["Read","Edit"]`, `added_lines=1`, `deleted_lines=1`, `client_data_used=false`, `deployment_performed=false`, `auto_merge=false`. El `claude-price-fixture.mjs` entregado conserva todo el código salvo la corrección `format(amountMinor)` → `format(amountMinor/100)`. Tres comprobaciones adicionales del archivo descargado pasaron en Node.js local.
+
+**Evidencia de tests:** Antes del CLI, GitHub `node --test` produjo 1 aprobado y 2 fallidos (error intencional). Después, `3 tests passing / 0 failing`; ejecución del validador de log Claude Read/Edit y diff de un único archivo, todo en verde.
+
+**Distinción importante:** Se ejecutó realmente **el CLI oficial de Claude Code** (versión fijada `2.1.296`), usando el adaptador FreeLLMAPI y el modelo `openai/gpt-oss-20b`. **No se utilizó el modelo Claude de Anthropic** y no se verificó coste monetario/consumo. El cambio es una *fixture sintética de un único archivo público*, no un pedido de cliente.
+
+**Límites preservados:** No se escribió al repositorio con credenciales de GitHub, no se desplegó ni fusionó código, no se tocaron proyectos Raíces/Mayor Studio ni datos de clientes, y la propuesta está disponible para revisión como artefacto. La evidencia estructurada se conserva en `agencia-autonoma/reports/claude-code-smoke-2026-10-24.json` (commit `e5042531a93683589b245943e8c4efec792a6b42`).
+
+### Nuevo avance conservador
+**65% completado / 35% pendiente**, estimado (antes 62%). Sube la categoría Desarrollo Automatizado de **6/20 a 9/20**: primer uso de CLI realmente auditado, pero muy delimitado. No se suman puntos por clientes, cobros o una autonomía operativa que no existe.
+- Web/captación 20/20; CRM propietario 12/15; propuestas 12/15; cobros y fiscalidad 3/15; desarrollo con agentes 9/20; QA y entregas 9/10; ventas 0/5 = **65/100**.
+- Faltan repositorio privado aislado, ejecución de Claude Code desde órdenes comerciales autorizadas, auténtico ciclo de QA→PR→revisión→entrega de un proyecto, control de gastos y cuotas, administrador activo, cobros y facturación reales, ventas.
