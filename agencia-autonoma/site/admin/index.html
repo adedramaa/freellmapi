@@ -9,6 +9,16 @@
 <output id="ownerClaimId" class="details" style="display:block;overflow-wrap:anywhere" aria-label="Tu ID para solicitar autorización"></output>
 <div class="actions" style="margin-top:14px"><button type="button" class="secondary" id="copyOwnerID">Copiar mi ID</button><button type="button" class="secondary" id="recheckOwner">Comprobar autorización</button><button type="button" class="secondary" id="ownerLogout">Salir</button></div>
 <p class="small" id="ownerStatus" role="status">No compartas tu contraseña ni códigos de sesión. El ID por sí solo no concede acceso.</p>
+<div class="card" style="margin-top:18px;padding:16px" aria-labelledby="verifyEmailHeading">
+<h2 id="verifyEmailHeading" style="font-size:17px;margin:0 0 8px">Verificar correo para acceder de forma segura</h2>
+<p class="small">Solicita un código de Neon Auth al correo de la cuenta con la que iniciaste sesión. Introduce el código <strong>solo aquí</strong>, nunca en ChatGPT.</p>
+<div class="actions"><button type="button" class="secondary" id="sendVerifyEmail">Enviar código a mi correo</button></div>
+<label style="margin-top:12px">Código recibido por correo
+<input id="emailVerifyOtp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]{6,10}" placeholder="Código de Neon Auth">
+</label>
+<div class="actions" style="margin-top:12px"><button type="button" class="secondary" id="confirmVerifyEmail">Verificar correo</button></div>
+<p class="small" role="status" id="emailVerifyStatus">La verificación del correo no otorga automáticamente permisos de administrador; estos requieren aprobación independiente.</p>
+</div>
 </section>
 <section id="main" hidden><div class="toolbar"><div><h1>Bandeja de oportunidades</h1><p>Consultas argentinas e internacionales · revisión y seguimiento</p><p class="small" id="activeUserID" aria-label="Identidad de acceso"></p></div><div class="controls"><button type="button" class="secondary" id="refresh">Actualizar</button><button type="button" class="secondary" id="exportCsv">Exportar 100 últimas (CSV)</button><button type="button" class="secondary" id="logout">Salir</button></div></div>
 <div class="stats" id="stats"><div class="stat"><strong id="nNew">—</strong><span>Nuevas</span></div><div class="stat"><strong id="nQualified">—</strong><span>Calificadas</span></div><div class="stat"><strong id="nUSD">—</strong><span>Consultas USD</span></div><div class="stat"><strong id="nEUR">—</strong><span>Consultas EUR</span></div></div>
@@ -227,6 +237,39 @@ else for(const ev of events){
 lastKnownLeadCount=Number(b.metrics?.total||0);
 lastKnownEventKeys=new Set(events.map(ev=>String(ev.slot)+'/'+String(ev.event_key)));
 render();status('Datos actualizados.')}catch(e){status('No se pudo cargar la bandeja: '+e.message,true)}}
+const authOtpBase="https://ep-bitter-fog-b50sm837.neonauth.c-7.us-east-2.aws.neon.tech/neondb/auth";
+async function emailOtpRequest(path,data){
+ const response=await fetch(authOtpBase+path,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(data),signal:AbortSignal.timeout(14000)});
+ const payload=await response.json().catch(()=>({}));
+ if(!response.ok||payload.error)throw Error(payload?.message||payload?.error?.message||('Error HTTP '+response.status));
+ return payload;
+}
+el('sendVerifyEmail').addEventListener('click',async()=>{
+ if(!user?.email)return;
+ const button=el('sendVerifyEmail');button.disabled=true;
+ el('emailVerifyStatus').textContent='Solicitando código a Neon Auth…';
+ try{
+  await emailOtpRequest('/email-otp/send-verification-otp',{email:user.email,type:'email-verification'});
+  el('emailVerifyStatus').textContent='Solicitud enviada. Revisa el correo de tu cuenta (incluye spam) y escribe el código aquí, sin compartirlo en el chat.';
+ }catch(error){
+  el('emailVerifyStatus').textContent='No se pudo enviar el código: '+error.message+'. Puedes iniciar sesión con Google para una verificación alternativa.';
+ }finally{button.disabled=false}
+});
+el('confirmVerifyEmail').addEventListener('click',async()=>{
+ if(!user?.email)return;
+ const code=el('emailVerifyOtp').value.trim();
+ if(!/^[0-9]{6,10}$/.test(code)){el('emailVerifyStatus').textContent='Ingresa un código numérico de 6 a 10 cifras.';return}
+ const button=el('confirmVerifyEmail');button.disabled=true;
+ el('emailVerifyStatus').textContent='Verificando código con Neon Auth…';
+ try{
+  await emailOtpRequest('/email-otp/verify-email',{email:user.email,otp:code});
+  el('emailVerifyOtp').value='';
+  el('emailVerifyStatus').textContent='Correo verificado por Neon Auth. Se requiere aprobación independiente del administrador.';
+  await refreshOwnerAccess();
+ }catch(error){el('emailVerifyStatus').textContent='El código no pudo verificarse: '+error.message}
+ finally{button.disabled=false}
+});
+
 el('googleSignIn').addEventListener('click',async()=>{
   el('googleSignIn').disabled=true;el('loginError').textContent='Abriendo autenticación con Google…';
   try{
