@@ -81,6 +81,35 @@ export default {
   // This endpoint never returns customer records or allows self-approval.
   if(request.method==='GET'&&url.pathname==='/api/admin/access')
     return answer({ok:true,user_id:user,approved},200,cors);
+  // An owner claim is permitted only for the specifically preauthorized pending identity,
+  // after trusted Neon Auth has verified the same original mailbox. No email address or
+  // OTP is accepted from the client. This does not grant rights to arbitrary signups.
+  if(request.method==='POST'&&url.pathname==='/api/admin/claim-owner'){
+    try{
+      const rows=await sql(`
+        WITH verified_candidate AS (
+          SELECT a.user_id FROM agencia.admin_users a
+          JOIN neon_auth."user" u ON u.id::text=a.user_id
+          WHERE a.user_id=$1 AND a.active=false AND a.approved_at IS NULL
+            AND a.approved_by=('pending_email_sha256:' ||
+                 encode(sha256(convert_to(lower(u.email),'UTF8')),'hex'))
+            AND u."emailVerified"=true AND COALESCE(u."banned",false)=false
+            AND NOT EXISTS (SELECT 1 FROM agencia.admin_users existing WHERE existing.active=true)
+        ), accepted AS (
+          UPDATE agencia.admin_users a SET active=true,approved_at=now(),
+            approved_by='owner_verified_email_claim'
+          WHERE a.user_id IN (SELECT user_id FROM verified_candidate)
+            AND a.active=false AND a.approved_at IS NULL
+          RETURNING a.user_id
+        ) SELECT user_id FROM accepted
+      `,[user]);
+      return rows.length===1
+        ?answer({ok:true,approved:true},200,cors)
+        :answer({error:'owner_identity_not_verified_or_not_preapproved'},403,cors);
+    }catch{
+      return answer({error:'claim_unavailable'},503,cors);
+    }
+  }
   if(!approved)return answer({error:'not_authorized_as_owner'},403,cors);
   try{
     if(url.pathname==='/api/admin/leads'&&request.method==='GET'){
