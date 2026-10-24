@@ -359,3 +359,27 @@ Abrir `https://autonoma-dev-agencia-v2.onrender.com/admin/`, acceder con Google 
 **65% completado / 35% pendiente**, estimado (antes 62%). Sube la categoría Desarrollo Automatizado de **6/20 a 9/20**: primer uso de CLI realmente auditado, pero muy delimitado. No se suman puntos por clientes, cobros o una autonomía operativa que no existe.
 - Web/captación 20/20; CRM propietario 12/15; propuestas 12/15; cobros y fiscalidad 3/15; desarrollo con agentes 9/20; QA y entregas 9/10; ventas 0/5 = **65/100**.
 - Faltan repositorio privado aislado, ejecución de Claude Code desde órdenes comerciales autorizadas, auténtico ciclo de QA→PR→revisión→entrega de un proyecto, control de gastos y cuotas, administrador activo, cobros y facturación reales, ventas.
+
+## 24/10/2026 02:18 UTC — preflight desde Neon + CI realmente ejecutado
+
+### Cambios desplegados y comprobados
+- Se instaló la función SQL de solo lectura `agencia.get_dispatch_readiness(uuid, actor)` que requiere admin previamente aprobado y revisa orden `plan_ready`, contrato aceptado y cotización enviada, pago marcado como verificado con referencias, validación fiscal, atestación de repositorio, aprobación vigente y **presupuesto de IA de 0 centavos USD**. Nunca marca `may_dispatch=true`: siempre devuelve `may_dispatch=false`, porque el repositorio, la conciliación externa, las cuotas y las credenciales del runner requieren una comprobación independiente, inmediata y autenticada. No devuelve datos de clientes.
+- La función se respaldó en `agencia-autonoma/sql/work-order-dispatch-preflight-2026-10-24.sql` (última revisión commit `c4968388f0ee0443dce91c5df2405c687683539b`). Una comprobación SQL en vivo con actor desconocido devolvió `not_authorized`.
+- Neon `agenciaadmin` desplegada revisión **10 `completed`**. Agrega `GET /api/admin/work-orders/preflight?order_id=UUID` con JWT EdDSA y allowlist; el endpoint público sin credenciales devolvió **403**, sin mostrar orden ni PII.
+- El panel móvil del propietario incluye sección **Verificación previa a Claude Code**, de solo lectura, con ID de orden y lista de condiciones que faltan. Se comprobó el JavaScript y se desplegó mediante Render `dep-dbe1atom7kps73c0pb8g`, commit `9cb372b7e3d4fccb074f1a104da5df371124514b`, estado `live`. Se verificó por navegador que la sección es visible.
+- Se creó `runner/dispatch-gate.mjs`, una función pura que comprueba metadatos autenticados de GitHub (requiere `private=true`, `visibility=private`, propiedad/repositorio coincidentes y permiso de escritura), evento del propietario, aprobación no vencida, factura o conciliación verificada externamente y ausencia de cargos del proveedor. **No realiza ejecución autónoma y nunca realiza llamadas de red**. Se detectó y corrigió un error de sintaxis en el patrón del repositorio antes de ejecutar la suite. Sus 13 pruebas pasaron en el entorno V8 local.
+- **GitHub Actions pasó la suite real bajo Node**: workflow `Agencia Autonoma - Node proof (read-only)`, run **`40053645346`**, URL https://github.com/adedramaa/freellmapi/actions/runs/40053645346, commit de workflow `c5faf4678588764d697c20645051bfb45c5b923f`, repo de agencia fijado al commit `9cb372b7e3d4fccb074f1a104da5df371124514b`. En los logs: **48 tests aprobados, 0 fallidos**, incluye los tests de `dispatch-gate`. También generó, verificó y subió el paquete sintético HTML: **15 controles** y un SHA-256 idéntico en generación/verificación. Artifact **`agency-fictional-node-demo`**, id `12544925124`.
+- Al actualizar el workflow en `main`, GitHub activó además los workflows generales del repositorio compartido `CI` y `Docker`. No se modificaron sus códigos ni se desplegaron clientes, pero consumen minutos de Actions; **evitar nuevas modificaciones en `main` si no es imprescindible**.
+- Datos comerciales: **0 propietarios aprobados, 0 leads reales, 0 órdenes, 0 pagos y 0 aceptaciones**; este preflight no se probó aún con una orden real legítimamente aprobada.
+- No se crearon tareas programadas nuevas ni se usó modelo pago Claude. El CLI de Claude Code sí fue demostrado en la prueba anterior (run `40052784337` con FreeLLMAPI), pero **no fue invocado otra vez en esta ronda**.
+
+### Puntuación de preparación
+**68% completado / 32% pendiente**. Antes 65%/35%; se justifica +1 por revisión de órdenes en el CRM y +2 por el control de ejecución de solo lectura con suite CI real completa. No se puntúa una integración de cobro, repositorio privado ni trabajo comercial con Claude inexistentes.
+Desglose: sitio/captación **20/20**, panel/CRM **13/15**, presupuestos **12/15**, cobros/fiscalidad **3/15**, desarrollo con agentes **11/20**, QA/entrega/monitoreo **9/10**, ventas **0/5**.
+
+### Próximos bloqueos reales
+- Cuenta real de administrador aprobada mediante verificación segura del usuario y pruebas de sesión desde Android.
+- Repositorio privado **dedicado exclusivamente a la agencia**; no usar `mayor-studio-whatsapp-bridge` ni el repo público para clientes. GitHub connector de esta sesión no expone creación directa de repositorios.
+- Integración autenticada de GitHub/runner CI privado para verificar el repositorio, aprobación y pagos otra vez **antes de Claude Code**, con pruebas de aislamiento y cuota.
+- Reconciliación de pago independiente del registro interno, validación fiscal y facturas.
+- Primer pedido y entrega comercial revisados. Mantener gastos no autorizados en cero.
