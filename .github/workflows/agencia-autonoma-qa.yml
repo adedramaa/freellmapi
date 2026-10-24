@@ -43,6 +43,13 @@ jobs:
           }
           console.log('PASS: verified standalone seed files='+manifest.files.length);
           NODE
+      - name: Preserve reviewed agency-only migration seed for Android download
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: agencia-privada-solo-codigo
+          path: ${{ runner.temp }}/agency-private-seed/
+          if-no-files-found: error
+          retention-days: 7
       - name: Produce and verify offline fictional website artifact
         shell: bash
         run: |
