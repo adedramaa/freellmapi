@@ -427,3 +427,15 @@ Distribución: web/captación 20/20, CRM 13/15, presupuestos 12/15, pagos/fiscal
 - El paquete contiene código publicable ya presente en el repositorio. No contiene exportación SQL de datos ni ficheros de credenciales; la detección automática de secretos no sustituye revisión humana previa a cualquier importación.
 - Para llegar a producción siguen siendo necesarias: cuenta de administrador verificada desde Android, repo privado aislado **creado y comprobado**, migración/importación y pruebas del nuevo CI, comunicaciones autorizadas, cobro/facturación válidos y una orden real con QA, entrega y beneficio reconciliado.
 - **Estimación orientativa de preparación: 72 % listo / 28 % pendiente.** No equivale a grado de automatización rentable. Sin clientes y sin flujo de cobro no se puede declarar operación comercial al 100 %. Seguir manteniendo coste cero condicionado a cuotas gratuitas.
+
+
+## Implementación validada — 24/10/2026 13:04 UTC
+
+- **Paquete privado autónomo:** la exportación de 47 archivos se ejecutó en GitHub y su copia independiente volvió a pasar toda la batería de pruebas. Se verificó fuera del repositorio original (pero continúa pendiente crear y configurar el repositorio privado real).
+- **Protección memoria intake:** `agencia-autonoma/neon/index.mjs` rechaza entradas de más de 12.000 bytes *mientras las lee*, sin depender de Content-Length; la API también limita declaraciones grandes anticipadamente. Incluye cuatro casos nuevos: tamaño real, tamaño declarado, Unicode multibyte y JSON truncado. El control no reemplaza una protección de borde / WAF.
+- **Despliegue real Neon:** `agencialeads`, deployment **6**, estado `completed`; no cambios de esquema, credenciales, panel, pagos ni monitor. Se conservó la función anterior en el historial de deployments.
+- **CI producción read-only:** `https://github.com/adedramaa/freellmapi/actions/runs/40096516839` — job `success`. Verificó HTTP de `/health` con base `verified` y web Render con formulario presente, directamente desde GitHub Actions sin enviar leads, autenticación ni pagos.
+- **QA:** 23 + 52 = **75 pruebas distintas**, todas pasan en repositorio original y nuevamente dentro del paquete independiente exportado (**150 resultados de prueba sin fallos**; no confundirlo con 150 escenarios distintos).
+- **Neon consulta read-only de cierre:** 0 leads comerciales, 0 work_orders, 0 payments y 0 administradores activos. Último monitor `2026-10-24T13:00:34Z`.
+- **Estado subjetivo orientativo:** 74% de preparación / 26% pendiente. Sigue prohibido declarar 100% o ingresos hasta autenticación del titular real en Android, separación en repositorio privado verificable, cobro/facturación, ejecución autónoma segura con cliente, QA/entrega real y ventas.
+- No se iniciaron planes pagos ni se tocaron sistemas Mayor Studio o Raíces. Uso de herramientas gratuitas siempre condicionado a límites/cuotas del proveedor.
