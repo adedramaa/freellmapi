@@ -8,7 +8,7 @@
  * - actor and event from trusted CI context
  * Never accept a client-supplied JSON document as one of these inputs.
  */
-const REPO=/^[A-Za-z0-9_.-]{1,90}/[A-Za-z0-9_.-]{1,100}$/;
+const REPO=/^[A-Za-z0-9_.-]{1,90}\/[A-Za-z0-9_.-]{1,100}$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function validTime(value){return typeof value==='string'&&Number.isFinite(Date.parse(value));}
 function add(errors,value,condition){if(!condition)errors.push(value)}
