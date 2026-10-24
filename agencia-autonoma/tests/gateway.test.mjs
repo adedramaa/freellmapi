@@ -59,3 +59,25 @@ test('accepts admin CORS preflight only from production domain',async()=>{
  const bad=await admin.fetch(new Request(ADMIN,{method:'OPTIONS',headers:{Origin:'https://evil.example'}}));
  assert.equal(ok.status,204);assert.equal(bad.status,403);
 });
+
+
+test('refuses oversize JSON before parsing (12 KiB memory gate)',async()=>{
+ const r=await post(payload({details:'X'.repeat(20_000)}));
+ assert.equal(r.status,413);
+ const body=await r.json();assert.equal(body.error,'too_large');
+});
+test('refuses large declared Content-Length without reading body',async()=>{
+ const r=await publicLead.fetch(new Request(PUBLIC,{method:'POST',
+  headers:{Origin:WEB,'Content-Type':'application/json','Content-Length':'99000'},
+  body:JSON.stringify(payload())}));
+ assert.equal(r.status,413);
+});
+test('rejects multibyte Unicode payload by bytes, not JS characters',async()=>{
+ const r=await post(payload({details:'😀'.repeat(3500)}));
+ assert.equal(r.status,413);
+});
+test('truncated or malformed request remains a 400, no database call',async()=>{
+ const r=await publicLead.fetch(new Request(PUBLIC,{method:'POST',
+  headers:{Origin:WEB,'Content-Type':'application/json'},body:'{"name":'}));
+ assert.equal(r.status,400);
+});
