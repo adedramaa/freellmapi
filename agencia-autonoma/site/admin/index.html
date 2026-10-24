@@ -213,6 +213,8 @@ else for(const ev of events){
  const gap=ev.event_key==='monitor_gap'&&Number.isFinite(Number(ev.details?.gap_minutes))?' · '+Number(ev.details.gap_minutes)+' minutos':'';
  panel.append(element('li','',new Date(ev.slot).toLocaleString('es-AR')+' — '+note+count+gap));
 }
+lastKnownLeadCount=Number(b.metrics?.total||0);
+lastKnownEventKeys=new Set(events.map(ev=>String(ev.slot)+'/'+String(ev.event_key)));
 render();status('Datos actualizados.')}catch(e){status('No se pudo cargar la bandeja: '+e.message,true)}}
 el('googleSignIn').addEventListener('click',async()=>{
   el('googleSignIn').disabled=true;el('loginError').textContent='Abriendo autenticación con Google…';
@@ -233,17 +235,25 @@ function downloadCsv(){
   status('Exportación lista. Contiene datos personales; guarda el archivo de forma segura. No sustituye un respaldo completo de la base.');
 }
 el('exportCsv').addEventListener('click',downloadCsv);
-let lastKnownLeadCount=null;
+let lastKnownLeadCount=null,lastKnownEventKeys=null;
 async function updateInboxCount(){
-  if(!user||document.visibilityState!=='visible')return;
+  if(!user||!ownerApproved||document.visibilityState!=='visible')return;
   try{
     const data=await call('/api/admin/metrics');
     const total=Number(data.metrics?.total||0);
-    if(lastKnownLeadCount!==null&&total>lastKnownLeadCount){
-      status('Llegaron '+(total-lastKnownLeadCount)+' nuevas consultas. Revisa la bandeja.');
+    const increment=lastKnownLeadCount===null?0:Math.max(0,total-lastKnownLeadCount);
+    const incoming=Array.isArray(data.monitor_events)?data.monitor_events:[];
+    const newEvents=lastKnownEventKeys===null?[]:incoming.filter(ev=>!lastKnownEventKeys.has(String(ev.slot)+'/'+String(ev.event_key)));
+    if(increment>0||newEvents.length){
       await load();
+      const phrases=[];
+      if(increment>0)phrases.push('Llegaron '+increment+' nuevas consultas');
+      if(newEvents.length)phrases.push('Hay '+newEvents.length+' nuevos eventos de monitoreo');
+      status(phrases.join('. ')+'. Revisa el historial de la bandeja.');
+    }else{
+      lastKnownLeadCount=total;
+      lastKnownEventKeys=new Set(incoming.map(ev=>String(ev.slot)+'/'+String(ev.event_key)));
     }
-    lastKnownLeadCount=total;
   }catch(e){status('Sin conexión para comprobar nuevas consultas.',true)}
 }
 setInterval(updateInboxCount,300000);
