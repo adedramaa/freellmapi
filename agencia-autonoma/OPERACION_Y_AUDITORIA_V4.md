@@ -413,3 +413,17 @@ Desglose: sitio/captación **20/20**, panel/CRM **13/15**, presupuestos **12/15*
 Distribución: web/captación 20/20, CRM 13/15, presupuestos 12/15, pagos/fiscalidad 3/15, ejecutor 12/20, QA/monitoreo/entrega 9/10, ventas 0/5.
 
 **Lo que de verdad falta:** acceso de propietario validado, repositorio privado dedicado, ejecución de Claude Code sobre órdenes aprobadas con comprobaciones de identidad y pago no ficticias, conciliación de cobros/ARCA, QA/revisión/entrega de un trabajo real y adquisición de clientes. El próximo punto comercial no se obtiene con más simulaciones: necesita tráfico, respuestas a consultas y finalmente ventas. Mantener costo no autorizado en cero.
+
+
+## Actualización verificada — 24/10/2026, 12:38 UTC
+
+- Monitor Neon horario: snapshot `2026-10-24T12:00:05Z`, `website_ok=true`, `backend_ok=true`, `pending_leads=0`.
+- Base de datos: 6 leads de `integration_test` con estado `descartado`; 6 presupuestos borrador derivados de esas pruebas. **0 leads comerciales**, 0 órdenes, 0 pagos y 0 administradores autorizados.
+- Rama `agencia-autonoma-infra`: incorporado `runner/export-private-seed.mjs` y 5 pruebas del exportador. Refuerza exclusiones por listas blancas y rechaza enlaces simbólicos, destinos no válidos, extensiones inesperadas y patrones típicos de secretos.
+- CI `https://github.com/adedramaa/freellmapi/actions/runs/40094747316`: **71/71 pruebas unitarias aprobadas** (19 + 52), exportación real de **47 archivos**, 238.584 bytes y verificación independiente de sus hashes SHA-256. No hubo invocación de IA, pagos ni datos reales de clientes.
+- ZIP temporal de solo código disponible en el apartado Artifacts de esa ejecución: `agencia-privada-solo-codigo`, ID `12559864785` (94.929 bytes), caduca `2026-10-31T12:38:20Z`. Incluye `README_PRIVATE_MIGRATION.md`, manifiesto SHA-256 y workflow manual para el destino `adedramaa/autonoma-dev-agencia-private`.
+- **El nombre de destino es una propuesta de configuración del exportador, no un repositorio creado ni privado comprobado.** El ZIP es una preparación para migrar, no una migración ejecutada. El código actual permanece en repo compartido público y jamás debe recibir código o datos privados de clientes.
+- Las nueve skills están empaquetadas, pero esto no acredita un flujo de producción con clientes ni ejecución autónoma de Claude Code sobre órdenes pagadas.
+- El paquete contiene código publicable ya presente en el repositorio. No contiene exportación SQL de datos ni ficheros de credenciales; la detección automática de secretos no sustituye revisión humana previa a cualquier importación.
+- Para llegar a producción siguen siendo necesarias: cuenta de administrador verificada desde Android, repo privado aislado **creado y comprobado**, migración/importación y pruebas del nuevo CI, comunicaciones autorizadas, cobro/facturación válidos y una orden real con QA, entrega y beneficio reconciliado.
+- **Estimación orientativa de preparación: 72 % listo / 28 % pendiente.** No equivale a grado de automatización rentable. Sin clientes y sin flujo de cobro no se puede declarar operación comercial al 100 %. Seguir manteniendo coste cero condicionado a cuotas gratuitas.
