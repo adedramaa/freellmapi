@@ -83,6 +83,29 @@ jobs:
           path: ${{ runner.temp }}/agency-full-dryrun/
           retention-days: 1
           if-no-files-found: error
+      - name: Read-only production health check for agency public site and API
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-time 25 --retry 2 --retry-delay 2 \
+            https://br-falling-night-b57zpkln-agencialeads.compute.c-7.us-east-2.aws.neon.tech/health \
+            -o "$RUNNER_TEMP/agency-health.json"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads((Path(os.environ['RUNNER_TEMP'])/'agency-health.json').read_text())
+          assert d.get('ok') is True and d.get('database')=='verified', 'live intake health failed'
+          print('PASS: Neon database checked through deployed public API')
+          PY
+          curl --fail --silent --show-error --location --max-time 25 --retry 2 --retry-delay 2 \
+            https://autonoma-dev-agencia-v2.onrender.com/ -o "$RUNNER_TEMP/agency-page.html"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          s=(Path(os.environ['RUNNER_TEMP'])/'agency-page.html').read_text()
+          assert '<title>Autónoma Dev' in s and 'id="contactForm"' in s, 'production landing mismatch'
+          print('PASS: production landing and contact form accessible')
+          PY
       - name: Validate agency-only skill metadata and preserved original skills
         run: |
           python3 - <<'PY'
