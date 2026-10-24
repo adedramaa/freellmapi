@@ -38,12 +38,32 @@
 <footer>Autónoma Dev · Operación desde Argentina · Acceso protegido por identidad y permisos</footer>
 <script type="module">
 import {createAuthClient} from "https://esm.sh/@neondatabase/auth@0.7.0-beta?bundle";
-const auth=createAuthClient("https://ep-bitter-fog-b50sm837.neonauth.c-7.us-east-2.aws.neon.tech/neondb/auth",{fetchOptions:{credentials:"include"}});
+const authBase="https://ep-bitter-fog-b50sm837.neonauth.c-7.us-east-2.aws.neon.tech/neondb/auth";
+const auth=createAuthClient(authBase,{fetchOptions:{credentials:"include"}});
 const api="https://br-falling-night-b57zpkln-agenciaadmin.compute.c-7.us-east-2.aws.neon.tech";
 const el=(id)=>document.getElementById(id);
 let leads=[],user=null,ownerApproved=false;
 const status=(s,bad=false)=>{el('feedback').textContent=s;el('feedback').className='status '+(bad?'error':'good')};
-async function token(){const result=await auth.token();const jwt=result?.data?.token;if(result?.error||typeof jwt!=='string'||jwt.split('.').length!==3)throw Error('La sesión venció o el navegador bloqueó las cookies; inicia sesión nuevamente');return jwt}
+/** Obtain a fresh signed JWT, never the opaque session token or an SDK cached session object. */
+async function token(){
+ let response;
+ try{
+   response=await fetch(authBase+'/token',{method:'GET',credentials:'include',
+     cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(14000)});
+ }catch{
+   throw Error('No se pudo consultar Neon Auth. Abre este panel en Chrome desde el menú del navegador, inicia sesión y vuelve a intentarlo');
+ }
+ if(!response.ok){
+   if([401,403].includes(response.status))
+     throw Error('La sesión no permite emitir un token. Abre el panel directamente en Chrome, habilita las cookies e inicia sesión otra vez');
+   throw Error('Neon Auth no pudo entregar el token de acceso (HTTP '+response.status+')');
+ }
+ const data=await response.json().catch(()=>null);
+ const jwt=typeof data?.token==='string'?data.token:data?.data?.token;
+ if(typeof jwt!=='string'||jwt.length>8192||jwt.split('.').length!==3)
+   throw Error('Neon Auth no entregó un JWT válido. Vuelve a iniciar sesión desde Chrome');
+ return jwt;
+}
 async function call(path,method='GET',data=null){
  const headers={Authorization:'Bearer '+await token()};if(data)headers['Content-Type']='application/json';
  const r=await fetch(api+path,{method,headers,body:data?JSON.stringify(data):null,signal:AbortSignal.timeout(14000)});
@@ -237,7 +257,7 @@ else for(const ev of events){
 lastKnownLeadCount=Number(b.metrics?.total||0);
 lastKnownEventKeys=new Set(events.map(ev=>String(ev.slot)+'/'+String(ev.event_key)));
 render();status('Datos actualizados.')}catch(e){status('No se pudo cargar la bandeja: '+e.message,true)}}
-const authOtpBase="https://ep-bitter-fog-b50sm837.neonauth.c-7.us-east-2.aws.neon.tech/neondb/auth";
+const authOtpBase=authBase;
 async function emailOtpRequest(path,data){
  const response=await fetch(authOtpBase+path,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(data),signal:AbortSignal.timeout(14000)});
  const payload=await response.json().catch(()=>({}));
