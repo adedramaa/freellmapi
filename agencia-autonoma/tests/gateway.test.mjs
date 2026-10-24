@@ -100,3 +100,25 @@ test('Android owner email OTP must use managed Neon endpoint and not self-approv
  assert.match(source,/await refreshOwnerAccess\(\)/);
  assert.doesNotMatch(source,/UPDATE\s+agencia\.admin_users/i);
 });
+
+
+test('owner claim can only activate preauthorized identity after verified email digest matches',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const source=await readFile(new URL('../neon/admin.mjs',import.meta.url),'utf8');
+ assert.match(source,/url\.pathname==='\/api\/admin\/claim-owner'/);
+ assert.match(source,/a\.approved_by=\('pending_email_sha256:' \|\|/);
+ assert.match(source,/u\."emailVerified"=true/);
+ assert.match(source,/COALESCE\(u\."banned",false\)=false/);
+ assert.match(source,/existing\.active=true/);
+ assert.match(source,/a\.user_id=\$1/);
+ assert.match(source,/approved_at=now\(\)/);
+});
+test('owner claim is initiated via authenticated browser after OTP, never from public signup',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const source=await readFile(new URL('../site/admin/index.html',import.meta.url),'utf8');
+ assert.match(source,/id="claimOwnerAccess"/);
+ assert.match(source,/await call\('\/api\/admin\/claim-owner','POST',\{\}\)/);
+ assert.match(source,/await claimVerifiedOwner\(\)/);
+ assert.ok(source.indexOf('await emailOtpRequest(\'/email-otp/verify-email\'') < source.indexOf('await claimVerifiedOwner();'));
+ assert.doesNotMatch(source,/u\."emailVerified"\s*=\s*true/);
+});
