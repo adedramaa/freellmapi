@@ -1,0 +1,84 @@
+# A REAL Claude Code CLI smoke test. Synthetic one-file bug, public-only fixture.
+# No customer data, no repository writes, no deployments, no paid Anthropic account.
+# Calls owner's preconfigured FreeLLMAPI endpoint. Provider limits may block execution.
+name: Agencia - Claude Code sintético y auditado
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/agencia-claude-smoke.yml'
+permissions:
+  contents: read
+concurrency:
+  group: agencia-claude-smoke
+  cancel-in-progress: false
+jobs:
+  claude-code-proof:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      DISABLE_TELEMETRY: '1'
+      DISABLE_AUTOUPDATER: '1'
+      CLAUDE_CODE_SIMPLE: '1'
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+    steps:
+      - name: Checkout only pinned and public agency fixture
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: c16d8dbbe2c4f0a1843d677d421a4b386b34efb5
+          persist-credentials: false
+      - name: Verify the synthetic fixture is broken before editing
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node --test agencia-autonoma/sandbox/claude-price-fixture.test.mjs; then
+            echo 'Expected initial failure did not occur. Refusing smoke test.'
+            exit 1
+          fi
+          git diff --exit-code
+      - name: Install official Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Run real Claude Code using the existing FreeLLMAPI adapter
+        shell: bash
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '384'
+        run: |
+          set -euo pipefail
+          if [[ -z "$ANTHROPIC_AUTH_TOKEN" ]]; then
+            echo 'FreeLLMAPI secret missing; no Claude invocation or change.'
+            exit 1
+          fi
+          timeout 155 claude --bare \
+            -p "Read only agencia-autonoma/sandbox/claude-price-fixture.mjs. Fix the bug that formats amountMinor as major units instead of dividing by 100. Edit this exact file with the Edit tool. Preserve all other code. Do not use any other tool." \
+            --model "$ANTHROPIC_MODEL" \
+            --max-turns 5 \
+            --tools "Read,Edit" --allowedTools Read Edit \
+            --permission-mode dontAsk --strict-mcp-config \
+            --disable-slash-commands --no-session-persistence \
+            --system-prompt "You may only Read and Edit the one specified synthetic public file. Make one tiny fix, no other edits or commands. No deployment or external network tools." \
+            --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/agency-claude-stream.jsonl" \
+            2> "$RUNNER_TEMP/agency-claude-error.log"
+      - name: Validate real Read/Edit tool trace and exact one-file diff
+        run: python3 agencia-autonoma/sandbox/verify_claude_smoke.py "$RUNNER_TEMP/agency-claude-stream.jsonl" > "$RUNNER_TEMP/agency-claude-evidence.json"
+      - name: Execute actual Node.js regression suite on Claude edit
+        run: node --test agencia-autonoma/sandbox/claude-price-fixture.test.mjs
+      - name: Save ONLY synthetic changed fixture and audit, never provider logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/agency-claude-output"
+          cp agencia-autonoma/sandbox/claude-price-fixture.mjs "$RUNNER_TEMP/agency-claude-output/"
+          cp "$RUNNER_TEMP/agency-claude-evidence.json" "$RUNNER_TEMP/agency-claude-output/audit.json"
+      - name: One-day review artifact, no commit or PR
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: agency-claude-synthetic-review
+          path: ${{ runner.temp }}/agency-claude-output/
+          retention-days: 1
+          if-no-files-found: error
