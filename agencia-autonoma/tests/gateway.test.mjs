@@ -122,3 +122,16 @@ test('owner claim is initiated via authenticated browser after OTP, never from p
  assert.ok(source.indexOf('await emailOtpRequest(\'/email-otp/verify-email\'') < source.indexOf('await claimVerifiedOwner();'));
  assert.doesNotMatch(source,/u\."emailVerified"\s*=\s*true/);
 });
+
+
+test('admin browser obtains actual JWT from managed Neon Auth token endpoint, never cached auth.token()',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const src=await readFile(new URL('../site/admin/index.html',import.meta.url),'utf8');
+ assert.match(src,/fetch\(authBase\+'\/token'/);
+ assert.match(src,/credentials:'include'/);
+ assert.match(src,/cache:'no-store'/);
+ assert.match(src,/jwt\.split\('\.'\)\.length!==3/);
+ assert.doesNotMatch(src,/auth\.token\(\)/);
+ assert.doesNotMatch(src,/localStorage\.setItem/);
+ assert.match(src,/Authorization:'Bearer '\+await token\(\)/);
+});
