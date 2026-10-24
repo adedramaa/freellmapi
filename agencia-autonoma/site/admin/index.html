@@ -12,7 +12,7 @@
 </section>
 <section id="main" hidden><div class="toolbar"><div><h1>Bandeja de oportunidades</h1><p>Consultas argentinas e internacionales · revisión y seguimiento</p><p class="small" id="activeUserID" aria-label="Identidad de acceso"></p></div><div class="controls"><button type="button" class="secondary" id="refresh">Actualizar</button><button type="button" class="secondary" id="exportCsv">Exportar 100 últimas (CSV)</button><button type="button" class="secondary" id="logout">Salir</button></div></div>
 <div class="stats" id="stats"><div class="stat"><strong id="nNew">—</strong><span>Nuevas</span></div><div class="stat"><strong id="nQualified">—</strong><span>Calificadas</span></div><div class="stat"><strong id="nUSD">—</strong><span>Consultas USD</span></div><div class="stat"><strong id="nEUR">—</strong><span>Consultas EUR</span></div></div>
-<p id="monitorHealth" class="small" role="status">Monitor: aún sin lecturas.</p><div class="toolbar"><label>Filtrar por estado<select id="filter"><option value="all">Todas</option><option value="nuevo">Nuevas</option><option value="calificado">Calificadas</option><option value="cotizado">Cotizadas</option><option value="descartado">Descartadas</option></select></label><p id="count" class="small"></p></div><div id="leads" class="list" aria-live="polite"></div><p id="feedback" class="status" role="status"></p>
+<p id="monitorHealth" class="small" role="status">Monitor: aún sin lecturas.</p><section class="card" style="margin:14px 0 18px"><h2 style="margin-top:0;font-size:18px">Historial de incidencias y consultas</h2><p class="small">Eventos recientes detectados por Neon. Se muestran aquí cuando abras el panel; NO son notificaciones al teléfono.</p><ul id="monitorEventsList" class="small" aria-live="polite" style="padding-left:20px"><li>Sin información todavía.</li></ul></section><div class="toolbar"><label>Filtrar por estado<select id="filter"><option value="all">Todas</option><option value="nuevo">Nuevas</option><option value="calificado">Calificadas</option><option value="cotizado">Cotizadas</option><option value="descartado">Descartadas</option></select></label><p id="count" class="small"></p></div><div id="leads" class="list" aria-live="polite"></div><p id="feedback" class="status" role="status"></p>
 <div class="card"><h2>Controles operativos</h2><p>Esta bandeja solo permite clasificar consultas y revisar borradores. Las propuestas aprobadas <strong>no se envían</strong> automáticamente y no se registran cobros aquí. Antes de comenzar un proyecto verifica la autorización fiscal, el contrato, el pago por canal permitido y los requisitos de calidad.</p></div></section></main>
 <footer>Autónoma Dev · Operación desde Argentina · Acceso protegido por identidad y permisos</footer>
 <script type="module">
@@ -199,7 +199,21 @@ function card(item){
  return root;
 }
 function render(){const filter=el('filter').value,list=el('leads');list.replaceChildren();const subset=leads.filter(x=>filter==='all'||x.status===filter);el('count').textContent=subset.length+' consultas';if(!subset.length){list.append(element('p','muted','No hay consultas para este filtro.'))}else{for(const lead of subset)list.append(card(lead))}}
-async function load(){status('Actualizando…');try{const [a,b]=await Promise.all([call('/api/admin/leads'),call('/api/admin/metrics')]);leads=a.leads||[];el('nNew').textContent=b.metrics?.nuevos||0;el('nQualified').textContent=b.metrics?.calificados||0;el('nUSD').textContent=b.metrics?.usd||0;el('nEUR').textContent=b.metrics?.eur||0;const m=b.monitor;el('monitorHealth').textContent=m?('Última verificación: '+new Date(m.checked_at).toLocaleString('es-AR')+' · Web '+(m.website_ok?'OK':'Con incidencia')+' · API '+(m.backend_ok?'OK':'Con incidencia')+' · Consultas nuevas '+m.pending_leads):'Monitor: sin lecturas todavía.';render();status('Datos actualizados.')}catch(e){status('No se pudo cargar la bandeja: '+e.message,true)}}
+async function load(){status('Actualizando…');try{const [a,b]=await Promise.all([call('/api/admin/leads'),call('/api/admin/metrics')]);leads=a.leads||[];el('nNew').textContent=b.metrics?.nuevos||0;el('nQualified').textContent=b.metrics?.calificados||0;el('nUSD').textContent=b.metrics?.usd||0;el('nEUR').textContent=b.metrics?.eur||0;const m=b.monitor;el('monitorHealth').textContent=m?('Última verificación: '+new Date(m.checked_at).toLocaleString('es-AR')+' · Web '+(m.website_ok?'OK':'Con incidencia')+' · API '+(m.backend_ok?'OK':'Con incidencia')+' · Consultas nuevas '+m.pending_leads):'Monitor: sin lecturas todavía.';const events=Array.isArray(b.monitor_events)?b.monitor_events:[];
+const panel=el('monitorEventsList');panel.replaceChildren();
+const descriptions={website_down:'La web dejó de responder',website_recovered:'La web volvió a responder',
+ api_down:'La API dejó de responder',api_recovered:'La API volvió a responder',
+ new_leads:'Nuevas consultas registradas',pending_growth:'Aumentaron las consultas pendientes',
+ monitor_gap:'Faltó una ejecución del monitor'};
+if(!events.length)panel.append(element('li','', 'Sin incidencias ni incrementos de consultas en los últimos 7 días.'));
+else for(const ev of events){
+ const note=descriptions[ev.event_key]||'Evento de monitor';
+ const count=['new_leads','pending_growth'].includes(ev.event_key)&&Number.isFinite(Number(ev.current_value))&&Number.isFinite(Number(ev.previous_value))
+  ?' · Diferencia: '+Math.max(0,Number(ev.current_value)-Number(ev.previous_value)):'';
+ const gap=ev.event_key==='monitor_gap'&&Number.isFinite(Number(ev.details?.gap_minutes))?' · '+Number(ev.details.gap_minutes)+' minutos':'';
+ panel.append(element('li','',new Date(ev.slot).toLocaleString('es-AR')+' — '+note+count+gap));
+}
+render();status('Datos actualizados.')}catch(e){status('No se pudo cargar la bandeja: '+e.message,true)}}
 el('googleSignIn').addEventListener('click',async()=>{
   el('googleSignIn').disabled=true;el('loginError').textContent='Abriendo autenticación con Google…';
   try{
