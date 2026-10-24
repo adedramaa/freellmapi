@@ -81,3 +81,22 @@ test('truncated or malformed request remains a 400, no database call',async()=>{
   headers:{Origin:WEB,'Content-Type':'application/json'},body:'{"name":'}));
  assert.equal(r.status,400);
 });
+
+
+test('admin requires verified and unbanned user even when allowlisted',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const source=await readFile(new URL('../neon/admin.mjs',import.meta.url),'utf8');
+ assert.match(source,/u\."emailVerified"=true/);
+ assert.match(source,/COALESCE\(u\."banned",false\)=false/);
+ assert.match(source,/a\.active=true AND a\.approved_at IS NOT NULL/);
+});
+test('Android owner email OTP must use managed Neon endpoint and not self-approve',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const source=await readFile(new URL('../site/admin/index.html',import.meta.url),'utf8');
+ assert.match(source,/email-otp\/send-verification-otp/);
+ assert.match(source,/email-otp\/verify-email/);
+ assert.match(source,/autocomplete="one-time-code"/);
+ assert.match(source,/credentials:'include'/);
+ assert.match(source,/await refreshOwnerAccess\(\)/);
+ assert.doesNotMatch(source,/UPDATE\s+agencia\.admin_users/i);
+});
