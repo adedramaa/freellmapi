@@ -13,6 +13,17 @@
 <section id="main" hidden><div class="toolbar"><div><h1>Bandeja de oportunidades</h1><p>Consultas argentinas e internacionales · revisión y seguimiento</p><p class="small" id="activeUserID" aria-label="Identidad de acceso"></p></div><div class="controls"><button type="button" class="secondary" id="refresh">Actualizar</button><button type="button" class="secondary" id="exportCsv">Exportar 100 últimas (CSV)</button><button type="button" class="secondary" id="logout">Salir</button></div></div>
 <div class="stats" id="stats"><div class="stat"><strong id="nNew">—</strong><span>Nuevas</span></div><div class="stat"><strong id="nQualified">—</strong><span>Calificadas</span></div><div class="stat"><strong id="nUSD">—</strong><span>Consultas USD</span></div><div class="stat"><strong id="nEUR">—</strong><span>Consultas EUR</span></div></div>
 <p id="monitorHealth" class="small" role="status">Monitor: aún sin lecturas.</p><section class="card" style="margin:14px 0 18px"><h2 style="margin-top:0;font-size:18px">Historial de incidencias y consultas</h2><p class="small">Eventos recientes detectados por Neon. Se muestran aquí cuando abras el panel; NO son notificaciones al teléfono.</p><ul id="monitorEventsList" class="small" aria-live="polite" style="padding-left:20px"><li>Sin información todavía.</li></ul></section><div class="toolbar"><label>Filtrar por estado<select id="filter"><option value="all">Todas</option><option value="nuevo">Nuevas</option><option value="calificado">Calificadas</option><option value="cotizado">Cotizadas</option><option value="descartado">Descartadas</option></select></label><p id="count" class="small"></p></div><div id="leads" class="list" aria-live="polite"></div><p id="feedback" class="status" role="status"></p>
+<section class="card" aria-labelledby="agentPreflightHeading">
+<h2 id="agentPreflightHeading">Verificación previa a Claude Code</h2>
+<p>Consulta el estado de una orden existente. Esta pantalla <strong>no inicia IA</strong>, no autoriza pagos y no publica código. Solo muestra los bloqueos registrados por el servidor.</p>
+<form id="orderPreflightForm" class="actions">
+<label style="flex:1;min-width:230px">ID de orden de trabajo
+<input type="text" id="orderPreflightID" required maxlength="36" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" aria-describedby="orderPreflightHint">
+</label><button type="submit" id="orderPreflightButton">Revisar requisitos</button>
+</form>
+<p id="orderPreflightHint" class="small">Solo órdenes creadas después de confirmar contrato y cobro. Incluso si los controles internos pasan, la privacidad real del repositorio y la cuota gratis deben comprobarse externamente.</p>
+<output id="orderPreflightResult" class="details" style="display:block;white-space:pre-wrap" aria-live="polite">No hay ninguna orden seleccionada.</output>
+</section>
 <div class="card"><h2>Controles operativos</h2><p>Esta bandeja solo permite clasificar consultas y revisar borradores. Las propuestas aprobadas <strong>no se envían</strong> automáticamente y no se registran cobros aquí. Antes de comenzar un proyecto verifica la autorización fiscal, el contrato, el pago por canal permitido y los requisitos de calidad.</p></div></section></main>
 <footer>Autónoma Dev · Operación desde Argentina · Acceso protegido por identidad y permisos</footer>
 <script type="module">
@@ -235,6 +246,37 @@ function downloadCsv(){
   status('Exportación lista. Contiene datos personales; guarda el archivo de forma segura. No sustituye un respaldo completo de la base.');
 }
 el('exportCsv').addEventListener('click',downloadCsv);
+const PREFLIGHT_REASONS=Object.freeze({
+ not_plan_ready:'La orden todavía no está aprobada para planificación.',
+ client_or_quote_not_approved:'Falta aprobación del cliente o cotización enviada.',
+ client_acceptance_missing:'Falta evidencia de aceptación contractual.',
+ verified_payment_missing:'Falta constancia de pago registrada y revisada.',
+ private_repo_attestation_missing:'Falta revisión interna del repositorio privado.',
+ tax_review_missing:'Falta revisión fiscal registrada.',
+ owner_execution_approval_missing_or_expired:'Falta una aprobación vigente del propietario.',
+ zero_cost_only:'El presupuesto aprobado debe mantener gasto de IA en cero.'
+});
+el('orderPreflightForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ const id=el('orderPreflightID').value.trim(),output=el('orderPreflightResult');
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)){
+   output.textContent='El ID de la orden no tiene un formato válido.';return;
+ }
+ el('orderPreflightButton').disabled=true;
+ output.textContent='Consultando controles…';
+ try{
+   const response=await call('/api/admin/work-orders/preflight?order_id='+encodeURIComponent(id));
+   const review=response.review;
+   const issues=Array.isArray(review.blockers)?review.blockers:[];
+   const lines=['Orden: '+id,'Estado: '+String(review.status||'desconocido'),
+    '¿Puede ejecutarse automáticamente? NO'];
+   if(issues.length)lines.push('Bloqueos internos:',...issues.map(x=>'• '+(PREFLIGHT_REASONS[x]||'Validación pendiente ('+String(x)+')')));
+   else lines.push('Controles internos completos; falta revisión independiente de GitHub, proveedor y entorno aislado.');
+   output.textContent=lines.join('\n');
+ }catch(error){output.textContent='No fue posible verificar la orden: '+error.message}
+ finally{el('orderPreflightButton').disabled=false}
+});
+
 let lastKnownLeadCount=null,lastKnownEventKeys=null;
 async function updateInboxCount(){
   if(!user||!ownerApproved||document.visibilityState!=='visible')return;
