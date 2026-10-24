@@ -37,6 +37,19 @@ jobs:
           path: ${{ runner.temp }}/agency-fictional-demo/
           if-no-files-found: error
           retention-days: 1
+      - name: Simulate full fictional order lifecycle without a customer or bank
+        shell: bash
+        run: |
+          set -euo pipefail
+          node agencia-autonoma/runner/synthetic-order-sim.mjs --demo --output "$RUNNER_TEMP/agency-full-dryrun"
+          node agencia-autonoma/runner/synthetic-order-sim.mjs --verify "$RUNNER_TEMP/agency-full-dryrun"
+      - name: Preserve fictional end-to-end order packet for owner review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: agency-fictional-full-order-review
+          path: ${{ runner.temp }}/agency-full-dryrun/
+          retention-days: 1
+          if-no-files-found: error
       - name: Validate agency-only skill metadata and preserved original skills
         run: |
           python3 - <<'PY'
