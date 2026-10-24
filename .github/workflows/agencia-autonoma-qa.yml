@@ -118,6 +118,8 @@ jobs:
           s=(Path(os.environ['RUNNER_TEMP'])/'agency-owner-login.html').read_text()
           assert 'id="sendVerifyEmail"' in s and 'id="confirmVerifyEmail"' in s, 'verification UI missing'
           assert 'email-otp/verify-email' in s, 'Neon OTP verification action missing'
+          assert "fetch(authBase+'/token'" in s, 'direct Neon Auth token flow missing from Render'
+          assert 'auth.token()' not in s, 'deprecated cached SDK token flow published'
           print('PASS: owner OTP verification UI is published')
           PY
           status=$(curl --silent --show-error --max-time 25 -o "$RUNNER_TEMP/admin-denied.json" -w "%{http_code}" \
