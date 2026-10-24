@@ -58,7 +58,10 @@ async function jwtUser(request){
  return payload.sub;
 }
 async function checkAdmin(userId){
- const r=await sql('SELECT user_id FROM agencia.admin_users WHERE user_id=$1 AND active=true AND approved_at IS NOT NULL',[userId]);
+ const r=await sql(`SELECT a.user_id FROM agencia.admin_users a
+  JOIN neon_auth."user" u ON u.id::text=a.user_id
+  WHERE a.user_id=$1 AND a.active=true AND a.approved_at IS NOT NULL
+    AND u."emailVerified"=true AND COALESCE(u."banned",false)=false`,[userId]);
  return r.length===1;
 }
 const STATES=new Set(['calificado','descartado','cotizado']);
