@@ -1,0 +1,52 @@
+{
+  "report_version": "agency-claude-smoke-evidence-v1",
+  "observed_on": "2026-10-24T02:08:00Z",
+  "github_run_id": 40052784337,
+  "workflow_name": "Agencia - Claude Code sintético y auditado",
+  "run_url": "https://github.com/adedramaa/freellmapi/actions/runs/40052784337",
+  "result": "success",
+  "event": "workflow_dispatch",
+  "artifact_id": 12543803667,
+  "artifact_url": "https://github.com/adedramaa/freellmapi/actions/runs/40052784337/artifacts/12543803667",
+  "artifact_expires_at": "2026-10-25T02:07:13Z",
+  "claude_cli": "@anthropic-ai/claude-code@2.1.296",
+  "model": "openai/gpt-oss-20b",
+  "adapter": "FreeLLMAPI",
+  "boundary": "public fictional source fixture only, no customer information",
+  "tools_from_audited_trace": [
+    "Read",
+    "Edit"
+  ],
+  "source_file": "agencia-autonoma/sandbox/claude-price-fixture.mjs",
+  "changes": {
+    "added_lines": 1,
+    "removed_lines": 1,
+    "before": "format(amountMinor)",
+    "after": "format(amountMinor/100)"
+  },
+  "tests": {
+    "pre_fix": {
+      "pass": 1,
+      "fail": 2
+    },
+    "post_fix": {
+      "pass": 3,
+      "fail": 0
+    },
+    "artifact_local_checks_passed": 3
+  },
+  "protections": {
+    "repository_write_permissions": false,
+    "deployment": false,
+    "auto_merge": false,
+    "private_customer_data": false
+  },
+  "not_yet_proven": [
+    "Actual client project work",
+    "Use of Anthropic Claude model rather than the Claude Code CLI",
+    "Private repository isolation",
+    "Automatic execution after client acceptance/payment",
+    "GitHub workflow invocation from the agency CRM",
+    "Proven zero incremental usage cost"
+  ]
+}
