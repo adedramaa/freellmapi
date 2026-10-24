@@ -20,6 +20,28 @@ const respond = (v,status,extra={}) => new Response(JSON.stringify(v),{status,he
 const clean = (v,max) => typeof v==='string' ? v.trim().slice(0,max+1) : '';
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Bound input memory by bytes, including chunked uploads without Content-Length. */
+async function readBoundedJson(req,maxBytes=12000) {
+  const declared=req.headers.get('content-length');
+  if(declared!==null&&(!/^\d+$/.test(declared)||Number(declared)>maxBytes))return null;
+  if(!req.body)return '';
+  const reader=req.body.getReader(),chunks=[];
+  let size=0;
+  try{
+    while(true){
+      const {value,done}=await reader.read();
+      if(done)break;
+      size+=value.byteLength;
+      if(size>maxBytes){await reader.cancel().catch(()=>{});return null;}
+      chunks.push(value);
+    }
+    return Buffer.concat(chunks,size).toString('utf8');
+  }finally{
+    reader.releaseLock();
+  }
+}
+
+
 /** Authenticated server-to-Neon SQL over TLS; parameters never interpolated. */
 async function sql(query,params=[]) {
   const connectionString=process.env.DATABASE_URL;
@@ -96,8 +118,9 @@ export default {
   if(!ALLOWED_ORIGINS.has(origin))return respond({error:'origin_rejected'},403,cors);
   const ct=req.headers.get('content-type')??'';
   if(!ct.includes('application/json'))return respond({error:'content_type_required'},415,cors);
-  const body=await req.text();
-  if(body.length>12000)return respond({error:'too_large'},413,cors);
+  let body;
+  try{body=await readBoundedJson(req);}catch{return respond({error:'invalid_body_stream'},400,cors);}
+  if(body===null)return respond({error:'too_large'},413,cors);
   let input;
   try{input=parse(JSON.parse(body));}catch{return respond({error:'invalid_json'},400,cors);}
   if(!input)return respond({error:'invalid_fields'},400,cors);
