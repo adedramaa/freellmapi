@@ -383,3 +383,33 @@ Desglose: sitio/captación **20/20**, panel/CRM **13/15**, presupuestos **12/15*
 - Integración autenticada de GitHub/runner CI privado para verificar el repositorio, aprobación y pagos otra vez **antes de Claude Code**, con pruebas de aislamiento y cuota.
 - Reconciliación de pago independiente del registro interno, validación fiscal y facturas.
 - Primer pedido y entrega comercial revisados. Mantener gastos no autorizados en cero.
+
+## 24/10/2026 02:36 UTC — ensayo integral sin clientes + captación orgánica
+
+**Motivo:** todavía no existen clientes ni ventas verificadas. No esperar a un pedido comercial para realizar pruebas del proceso y mejorar la captación.
+
+### Entrega demostrable 1 — encargo íntegro, PERO FICTICIO
+- Se añadieron `runner/synthetic-order-sim.mjs` y `runner/synthetic-order-sim.test.mjs`. La simulación tiene **9 etapas**: captación ficticia, presupuesto en revisión, aceptación ficticia, pago simulado, aprobación simulada, generación determinista, QA, revisión y paquete demostrativo. Cualquier intento de afirmar cliente, banco, repositorio privado o ejecución de Claude reales detiene la generación. No conecta con ningún servicio externo.
+- La salida son seis archivos: `index.html`, `README.md`, `manifest.json`, `qa-report.json`, `order-review.json` y `bundle-hashes.json`. Permite `--demo --output /ruta/nueva` y `--verify /ruta`. La verificación rehúsa archivos faltantes o extra, ficheros no regulares, manipulaciones y contradicciones en las banderas de QA y de entrega. Se rechaza sobrescribir carpetas.
+- **Límite explícito**: no hay pago bancario, aceptación contractual real, ejecución de Claude Code para este encargo ni permiso de entregar a clientes. Todos los sellos son huellas SHA-256 (sin firma criptográfica de tercero).
+- El workflow `.github/workflows/agencia-autonoma-qa.yml` se amplió para generar y verificar esta carpeta y publicar el artefacto `agency-fictional-full-order-review` con retención de 1 día. GitHub Actions run `40054452048` completó **success**. Sus archivos se descargaron y comprobaron en el runtime: **6 archivos, 5 digests correctos, 9 fases, 15 controles HTML**. Artefacto ID `12544921804` del 24/10/2026. No implicó API de IA, pagos ni clientes.
+- Se mantienen los resultados de la prueba de Claude Code de la ronda previa, `40052784337`: **el CLI se ejecutó realmente** sobre un error sintético diferente, con FreeLLMAPI y modelo gpt-oss-20b, no el modelo Anthropic Claude. No atribuir al CLI el HTML de este nuevo paquete.
+
+### Entrega demostrable 2 — captación sin inventar trabajos
+- Se publicaron dos páginas independientes, con contenidos específicos, condiciones transparentes y llamadas a la acción:
+  - `https://autonoma-dev-agencia-v2.onrender.com/automatizaciones/`
+  - `https://autonoma-dev-agencia-v2.onrender.com/desarrollo-web/`
+- Las tarjetas de la home enlazan a cada página, y el botón «Consultar» redirige al formulario ya existente con el servicio preseleccionado **solo desde una lista explícita de tipos permitidos**. No se añaden scripts de seguimiento, credenciales ni intermediarios.
+- Sitemap con **6 URLs** y metas `title`, `description`, `canonical` individuales. No se inventaron clientes, reseñas, resultados, precios o fechas de entrega.
+- Publicación Render `dep-dbe1iiks728c738s1hog`, commit `5b66e6b0cc061bf130eebdda2d6694d81be32b0b`, estado **live**. Se comprobaron páginas y sitemap vía navegador web. No equivale a indexación o tráfico confirmado: requerirá Search Console y adquisición real.
+
+### Pruebas reales y estado de negocio
+- Workflow de GitHub `Agencia Autónoma - Control de Seguridad` run `40054749615` completó **success**, con **19 tests** de web y servicio + **47 tests** del runner, 0 fallos; además produjo de nuevo un paquete sintético y validó las 9 skills y el aislamiento de otros proyectos.
+- Neon: **0 cuentas administrativas autorizadas, 0 leads de origen web, 0 pedidos, 0 intentos de pago, 0 aceptaciones**. Las funciones `agenciaadmin`, `agencialeads` y `agenciamonitor` mantienen `completed`. Último snapshot monitor observado a 02:00 UTC: web y API OK.
+- No hubo nuevas tareas de ChatGPT, no se activaron servicios de pago ni se realizaron envíos comerciales a terceros.
+
+### Reestimación responsable
+**69% preparado / 31% pendiente**, contra 68%/32% antes. Un único punto añadido para la evidencia del recorrido ficticio de preparación y revisión, sin confundirlo con una entrega real.
+Distribución: web/captación 20/20, CRM 13/15, presupuestos 12/15, pagos/fiscalidad 3/15, ejecutor 12/20, QA/monitoreo/entrega 9/10, ventas 0/5.
+
+**Lo que de verdad falta:** acceso de propietario validado, repositorio privado dedicado, ejecución de Claude Code sobre órdenes aprobadas con comprobaciones de identidad y pago no ficticias, conciliación de cobros/ARCA, QA/revisión/entrega de un trabajo real y adquisición de clientes. El próximo punto comercial no se obtiene con más simulaciones: necesita tráfico, respuestas a consultas y finalmente ventas. Mantener costo no autorizado en cero.
