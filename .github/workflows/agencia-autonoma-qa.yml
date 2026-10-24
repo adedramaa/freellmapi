@@ -24,6 +24,25 @@ jobs:
         run: node --test agencia-autonoma/tests/*.test.mjs
       - name: Validate isolated agent handoff without calling AI or payment providers
         run: node --test agencia-autonoma/runner/*.test.mjs
+      - name: Prove a clean standalone private-agency seed can be built without customer data
+        shell: bash
+        run: |
+          set -euo pipefail
+          node agencia-autonoma/runner/export-private-seed.mjs --output "$RUNNER_TEMP/agency-private-seed" --target adedramaa/autonoma-dev-agencia-private
+          node --input-type=module - <<'NODE'
+          import {readFile} from 'node:fs/promises';
+          import {createHash} from 'node:crypto';
+          import {join} from 'node:path';
+          const root=process.env.RUNNER_TEMP+'/agency-private-seed';
+          const manifest=JSON.parse(await readFile(join(root,'migration-manifest.json'),'utf8'));
+          if(!manifest.ci_only_manual||manifest.excludes_crm_records!==true||manifest.files.length<25)throw Error('incomplete_private_seed');
+          for(const f of manifest.files){
+            if(!/^(agencia-autonoma\/|\.claude\/skills\/agencia-|\.github\/workflows\/agency-qa.yml$|README_PRIVATE_MIGRATION.md$)/.test(f.path))throw Error('unexpected_file:'+f.path);
+            const bytes=await readFile(join(root,f.path));
+            if(createHash('sha256').update(bytes).digest('hex')!==f.sha256)throw Error('invalid_sha256:'+f.path);
+          }
+          console.log('PASS: verified standalone seed files='+manifest.files.length);
+          NODE
       - name: Produce and verify offline fictional website artifact
         shell: bash
         run: |
