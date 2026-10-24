@@ -61,6 +61,8 @@ BEGIN
   END IF;
   RETURN jsonb_build_object(
     'ok',true,'order_id',w.id,'status',w.status,
+    'repo_full_name',w.github_repo,'approved_at',w.execution_approved_at,
+    'expires_at',w.run_expiry_at,'max_cost_usd_cents',w.max_ai_cost_usd_cents,
     'eligible_for_external_repo_check',jsonb_array_length(blockers)=0,
     'may_dispatch',false,'blockers',blockers,
     'external_check_required','GitHub verified private ownership and authorized execution environment',
