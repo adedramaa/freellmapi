@@ -43,6 +43,13 @@ jobs:
           }
           console.log('PASS: verified standalone seed files='+manifest.files.length);
           NODE
+      - name: Verify exported seed passes QA without original repository files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/agency-private-seed"
+          node --test agencia-autonoma/tests/*.test.mjs
+          node --test agencia-autonoma/runner/*.test.mjs
       - name: Preserve reviewed agency-only migration seed for Android download
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
