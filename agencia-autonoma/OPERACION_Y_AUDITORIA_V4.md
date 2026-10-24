@@ -315,3 +315,19 @@ Distribución: web/captación **20/20**, panel/CRM **12/15**, presupuestos/acuer
 
 ### Paso que desbloquea la cuenta desde Android
 Abrir `https://autonoma-dev-agencia-v2.onrender.com/admin/`, acceder con Google o crear cuenta, pulsar **Copiar mi ID** en la página «Cuenta identificada · autorización pendiente». El responsable del despliegue debe verificar por separado la identidad antes de activar el UUID en `agencia.admin_users`. No pedir claves, tokens ni códigos de recuperación.
+
+## Incremento 24/10/2026 01:10 UTC — Historial de incidencias y avisos en panel
+
+**Cambios reales:**
+- Nueva tabla `agencia.monitor_events` sin PII con PK `(slot,event_key)`, para transiciones `website_down`, `website_recovered`, `api_down`, `api_recovered`, `new_leads`, `pending_growth`, `monitor_gap`. Índice cronológico y disparador `agency_capture_monitor_events` de PostgreSQL en `agencia.monitor_snapshots`. El detector solo registra incrementos de conteo; excluye registros de prueba de las consultas públicas contadas por el monitor.
+- **Prueba SQL reversible, aprobada:** datos sintéticos generaron 4 eventos de caída/nuevas consultas y 2 de recuperación; una actualización repetida no duplicó los eventos. 0 filas ficticias persistentes.
+- Backfill respaldado en snapshots históricos: `monitor_gap` único a `2026-10-23T21:00Z`, con `gap_minutes=120`; es un registro verídico de ausencia de una ejecución a las 20:00 UTC y no implica automáticamente caída del servicio.
+- Esquema guardado en `agencia-autonoma/sql/monitor-events-2026-10-24.sql`.
+- `agenciaadmin` versión 9 `completed` agrega `monitor_events` a `GET /api/admin/metrics` con ventana de 7 días y máximo 12 eventos. Sigue protegido por JWT del usuario aprobado; no hay acceso público a datos de clientes.
+- Panel Android: historial de incidencias textual y libre de PII. El polling cada 5 minutos mientras el panel está abierto ahora conserva un aviso visible después del refresco, distinguiendo cambios de consultas y monitoreo. El polling requiere cuenta administrativa aprobada.
+- Las verificaciones de sintaxis de API Node y módulo JS HTML dieron PASS.
+- El desplegado de Render anterior `dep-dbe09sss728c738o90ig` quedó `live` con la primera versión del panel de eventos. El despliegue siguiente `dep-dbe0ad9srm7s73d7ik80` lleva la mejora de avisos de primer plano y **debe verificarse como live**; no afirmar publicación final antes de comprobar.
+- Se intentó crear una vigilancia horaria de ChatGPT para avisos con el panel cerrado, pero **falló por el límite de 5 tareas activas**. Ninguna tarea anterior fue pausada ni cambiada. Por tanto, **NO hay notificaciones push fiables con el panel cerrado**.
+- Sin clientes comerciales, ingresos o pagos, sin acceso de propietario verificado, sin runner real de Claude Code y sin CI verde. El cron de Neon sigue configurado y las muestras horarias más recientes muestran web y API en buen estado.
+
+**Evaluación conservadora: 62% implementado y 38% pendiente.** Desde 61% solo +1 punto por trazabilidad de incidencias y avisos persistentes en primer plano. Puntuación: web 20/20, CRM 12/15, propuestas 12/15, cobros/fiscalidad 3/15, desarrollo Claude 6/20, QA/entrega/monitor 9/10, clientes/ingresos 0/5. Notificaciones con la app cerrada, cobros reales, autorizaciones del propietario, fiscalidad y ejecuciones autónomas siguen pendientes.
