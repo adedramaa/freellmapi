@@ -7,7 +7,7 @@
 <p>Iniciaste sesión correctamente. Por seguridad, solo las cuentas autorizadas pueden consultar información comercial. Registrarte con Google o email <strong>no concede permisos automáticamente</strong>.</p>
 <p class="small">Tu identificador de usuario en Neon Auth:</p>
 <output id="ownerClaimId" class="details" style="display:block;overflow-wrap:anywhere" aria-label="Tu ID para solicitar autorización"></output>
-<div class="actions" style="margin-top:14px"><button type="button" class="secondary" id="copyOwnerID">Copiar mi ID</button><button type="button" class="secondary" id="recheckOwner">Comprobar autorización</button><button type="button" class="secondary" id="ownerLogout">Salir</button></div>
+<div class="actions" style="margin-top:14px"><button type="button" class="secondary" id="copyOwnerID">Copiar mi ID</button><button type="button" class="secondary" id="claimOwnerAccess">Activar acceso verificado</button><button type="button" class="secondary" id="recheckOwner">Comprobar autorización</button><button type="button" class="secondary" id="ownerLogout">Salir</button></div>
 <p class="small" id="ownerStatus" role="status">No compartas tu contraseña ni códigos de sesión. El ID por sí solo no concede acceso.</p>
 <div class="card" style="margin-top:18px;padding:16px" aria-labelledby="verifyEmailHeading">
 <h2 id="verifyEmailHeading" style="font-size:17px;margin:0 0 8px">Verificar correo para acceder de forma segura</h2>
@@ -244,6 +244,20 @@ async function emailOtpRequest(path,data){
  if(!response.ok||payload.error)throw Error(payload?.message||payload?.error?.message||('Error HTTP '+response.status));
  return payload;
 }
+async function claimVerifiedOwner(){
+ if(!user)return;
+ const button=el('claimOwnerAccess');
+ button.disabled=true;
+ el('ownerStatus').textContent='Verificando preautorización e identidad en Neon…';
+ try{
+  const result=await call('/api/admin/claim-owner','POST',{});
+  if(result?.approved!==true)throw Error('claim_not_approved');
+  await refreshOwnerAccess();
+ }catch{
+  el('ownerStatus').textContent='No fue posible activar el acceso: asegúrate de verificar primero tu correo. No compartas el código ni la contraseña.';
+ }finally{button.disabled=false}
+}
+el('claimOwnerAccess').addEventListener('click',claimVerifiedOwner);
 el('sendVerifyEmail').addEventListener('click',async()=>{
  if(!user?.email)return;
  const button=el('sendVerifyEmail');button.disabled=true;
@@ -265,7 +279,7 @@ el('confirmVerifyEmail').addEventListener('click',async()=>{
   await emailOtpRequest('/email-otp/verify-email',{email:user.email,otp:code});
   el('emailVerifyOtp').value='';
   el('emailVerifyStatus').textContent='Correo verificado por Neon Auth. Se requiere aprobación independiente del administrador.';
-  await refreshOwnerAccess();
+  await claimVerifiedOwner();
  }catch(error){el('emailVerifyStatus').textContent='El código no pudo verificarse: '+error.message}
  finally{button.disabled=false}
 });
