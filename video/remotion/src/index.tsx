@@ -1,4 +1,5 @@
 import React from 'react';
+import {ZombieEpisode} from './ZombieEpisode';
 import {AbsoluteFill, Composition, interpolate, registerRoot, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 
 type Scene = {heading: string; caption: string};
@@ -53,7 +54,10 @@ const CloudVideo: React.FC<VideoProps> = ({title, subtitle, background, accent, 
 };
 
 const Root = () => (
-  <Composition id="CloudVideo" component={CloudVideo} width={720} height={1280} fps={30} durationInFrames={360} defaultProps={defaults} />
+  <>
+    <Composition id="CloudVideo" component={CloudVideo} width={720} height={1280} fps={30} durationInFrames={360} defaultProps={defaults} />
+    <Composition id="ZombieEpisode" component={ZombieEpisode} width={720} height={1280} fps={30} durationInFrames={1200} defaultProps={{...defaults,kind:'zombie-episode-1',hasVoice:false}} />
+  </>
 );
 
 registerRoot(Root);
