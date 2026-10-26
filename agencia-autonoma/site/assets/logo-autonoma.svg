@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1840" height="400" viewBox="0 0 1840 400" role="img" aria-labelledby="title">
+<title id="title">autónoma.dev</title>
+<g fill="#00C96B">
+<rect x="120" y="38" width="110" height="110" rx="15" transform="rotate(45 175 93)"/>
+<rect x="28" y="130" width="110" height="110" rx="15" transform="rotate(45 83 185)"/>
+<rect x="212" y="130" width="110" height="110" rx="15" transform="rotate(45 267 185)"/>
+<rect x="120" y="222" width="110" height="110" rx="15" transform="rotate(45 175 277)"/>
+</g>
+<text x="410" y="270" font-size="196" letter-spacing="-9" font-family="Space Grotesk,DM Sans,Arial,sans-serif" font-weight="700" fill="#032C22">autónoma<tspan fill="#00C96B">.dev</tspan></text>
+</svg>
