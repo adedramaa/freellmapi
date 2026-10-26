@@ -1,0 +1,155 @@
+name: DesignCraft - Cloud MCP
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/designcraft-cloud.yml']
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  designcraft:
+    if: >-
+      github.repository == 'adedramaa/freellmapi' &&
+      (github.event_name != 'issues' ||
+       (github.event.issue.user.login == 'adedramaa' &&
+        startsWith(github.event.issue.title, 'designcraft:')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Install pinned original DesignCraft binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          NAME=designcraft-0.13.0-linux-x86_64.tar.gz
+          curl -fLsS --retry 3 "https://github.com/storytold/designcraft/releases/download/v0.13.0/$NAME" -o "$RUNNER_TEMP/$NAME"
+          echo "5314d46bc520cf54835a2d1293351be1fed116228e055393019729f04e0f99c2  $RUNNER_TEMP/$NAME" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/dc-dist" "$RUNNER_TEMP/bin" "$RUNNER_TEMP/docs"
+          tar -xzf "$RUNNER_TEMP/$NAME" -C "$RUNNER_TEMP/dc-dist"
+          CLI="$(find "$RUNNER_TEMP/dc-dist" -type f -name designcraft-cli -print -quit)"
+          test -n "$CLI"
+          chmod +x "$CLI"
+          ln -s "$CLI" "$RUNNER_TEMP/bin/designcraft-cli"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/designcraft-cli" --version
+
+      - name: Real PDF and PNG smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          designcraft-cli run --sample --page 0 --export "$RUNNER_TEMP/docs/muestra.png" --export "$RUNNER_TEMP/docs/muestra.pdf"
+          test -s "$RUNNER_TEMP/docs/muestra.pdf"
+          test -s "$RUNNER_TEMP/docs/muestra.png"
+          file "$RUNNER_TEMP/docs/"*
+          echo 'PASS DesignCraft CLI actual document export'
+
+      - name: Register and test real MCP server
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 35 python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          r=pathlib.Path(os.environ['RUNNER_TEMP'])
+          p=(r/'bin/designcraft-cli').resolve()
+          root=r/'docs'
+          config={'mcpServers':{'designcraft':{'command':str(p),
+                    'args':['mcp','--automation-read-root',str(root),'--automation-write-root',str(root)]}}}
+          (r/'mcp.json').write_text(json.dumps(config))
+          with (r/'mcp.stderr').open('w') as err:
+              proc=subprocess.Popen([str(p),*config['mcpServers']['designcraft']['args']],
+                   stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=err,text=True,bufsize=1)
+              try:
+                  proc.stdin.write(json.dumps({'jsonrpc':'2.0','id':1,'method':'initialize',
+                      'params':{'protocolVersion':'2025-06-18','capabilities':{},
+                      'clientInfo':{'name':'cloud-proof','version':'1.0'}}})+'\n')
+                  proc.stdin.flush()
+                  first=json.loads(proc.stdout.readline())
+                  assert first.get('result',{}).get('serverInfo'),first
+                  proc.stdin.write(json.dumps({'jsonrpc':'2.0','method':'notifications/initialized'})+'\n')
+                  proc.stdin.write(json.dumps({'jsonrpc':'2.0','id':2,'method':'tools/list','params':{}})+'\n')
+                  proc.stdin.flush()
+                  res=json.loads(proc.stdout.readline())
+                  names=[t['name'] for t in res['result']['tools']]
+                  assert names
+                  (root/'mcp-test.json').write_text(json.dumps({'serverInfo':first['result']['serverInfo'],'tools':names},indent=2))
+                  print('PASS: MCP handshake + tools/list; tools:',len(names))
+              finally:
+                  proc.terminate()
+                  try:proc.wait(timeout=3)
+                  except subprocess.TimeoutExpired:proc.kill()
+          PY
+
+      - name: Install Claude Code on demand
+        if: github.event_name == 'issues'
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+      - name: Run Claude Code using DesignCraft MCP
+        if: github.event_name == 'issues'
+        shell: bash
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: '${{ secrets.FREELLMAPI_API_KEY }}'
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '450'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_TELEMETRY: '1'
+          DISABLE_AUTOUPDATER: '1'
+          DESIGNCRAFT_REQUEST: '${{ github.event.issue.body }}'
+        run: |
+          set -euo pipefail
+          test -n "$ANTHROPIC_AUTH_TOKEN"
+          cd "$RUNNER_TEMP/docs"
+          printf 'Use ONLY DesignCraft MCP tools; save a .designcraft document and a PDF in %s. The user asks: %s\n' "$RUNNER_TEMP/docs" "$DESIGNCRAFT_REQUEST" > "$RUNNER_TEMP/prompt.txt"
+          timeout 190 claude -p "$(cat "$RUNNER_TEMP/prompt.txt")" \
+            --model "$ANTHROPIC_MODEL" --max-turns 7 \
+            --mcp-config "$RUNNER_TEMP/mcp.json" --strict-mcp-config \
+            --tools "" --allowedTools "mcp__designcraft__*" \
+            --permission-mode dontAsk --disable-slash-commands \
+            --no-session-persistence --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/agent.jsonl" 2> "$RUNNER_TEMP/agent.stderr"
+          python3 - <<'PY'
+          import os,json,pathlib
+          r=pathlib.Path(os.environ['RUNNER_TEMP'])
+          calls=[]
+          for line in (r/'agent.jsonl').read_text().splitlines():
+              try:d=json.loads(line)
+              except:continue
+              for c in d.get('message',{}).get('content',[]):
+                  if c.get('type')=='tool_use' and c.get('name','').startswith('mcp__designcraft__'):
+                      calls.append(c['name'])
+          if not calls:raise SystemExit('No DesignCraft MCP tool calls observed')
+          (r/'docs'/'mcp-usage.json').write_text(json.dumps(calls))
+          print('PASS: Claude Code actually called DesignCraft MCP',calls)
+          PY
+
+      - name: Upload only generated documents
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: designcraft-docs-${{ github.run_id }}
+          path: '${{ runner.temp }}/docs/'
+          retention-days: 3
+          if-no-files-found: warn
+
+      - name: Report status to originating issue
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          ISSUE: '${{ github.event.issue.number }}'
+          STATUS: '${{ job.status }}'
+        run: |
+          echo "DesignCraft MCP cloud: $STATUS. Files: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (artifact designcraft-docs-$GITHUB_RUN_ID)." > "$RUNNER_TEMP/issue-status.txt"
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/issue-status.txt"
