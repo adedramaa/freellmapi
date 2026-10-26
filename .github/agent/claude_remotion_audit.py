@@ -4,6 +4,7 @@ Never print raw streams, stderr, prompts, API responses, or credentials.
 """
 from __future__ import annotations
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -82,7 +83,15 @@ def main():
                 continue
             rec = {"event": o.get("type"), "subtype": o.get("subtype")}
             if o.get("type") == "result":
-                rec.update({"is_error": o.get("is_error"), "num_turns": o.get("num_turns"), "result_kind": summarize_status(str(o.get("result", "")))})
+                raw=str(o.get("result", ""))
+                secret=os.environ.get("ANTHROPIC_API_KEY","")
+                if secret: raw=raw.replace(secret,"[redacted]")
+                raw=re.sub(r"[A-Za-z0-9_+=/.-]{40,}","[redacted-long-value]",raw)
+                rec.update({"is_error": o.get("is_error"), "num_turns": o.get("num_turns"), "result_kind": summarize_status(raw), "short_result": raw[:140]})
+            if o.get("type") == "user":
+                msg = o.get("message") or {}
+                if isinstance(msg, dict):
+                    rec["tool_result_errors"] = [x.get("is_error", False) for x in msg.get("content", []) if isinstance(x, dict) and x.get("type") == "tool_result"]
             if o.get("type") == "assistant":
                 msg = o.get("message") or {}
                 if isinstance(msg, dict):
