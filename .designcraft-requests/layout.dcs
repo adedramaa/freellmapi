@@ -1,0 +1,6 @@
+# DesignCraft editable editorial cover generated from ChatGPT without model API charges
+frame.create {"rect":[72,90,525,182],"content":"text","text":"ADEDRAMA"}
+frame.create {"rect":[72,188,525,265],"content":"text","text":"DESIGNCRAFT"}
+frame.create {"rect":[72,302,525,357],"content":"text","text":"MAQUETACION EN LA NUBE"}
+frame.create {"rect":[72,420,525,475],"content":"text","text":"Documento creado con ChatGPT + DesignCraft"}
+frame.create {"rect":[72,655,525,705],"content":"text","text":"BUENOS AIRES / 2026"}
