@@ -1,0 +1,20 @@
+{
+  "status": "failure",
+  "run_id": "40398712532",
+  "commit": "fc06d9fbef15a574e3766e9fde02bc144dabc619",
+  "mcp_handshake": true,
+  "files": [
+    {
+      "name": "mcp-test.json",
+      "bytes": 639
+    },
+    {
+      "name": "muestra.pdf",
+      "bytes": 552552
+    },
+    {
+      "name": "muestra.png",
+      "bytes": 221560
+    }
+  ]
+}
