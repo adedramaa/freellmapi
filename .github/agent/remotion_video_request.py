@@ -96,9 +96,9 @@ def load_authorized_request(event: dict, root: Path) -> dict:
         raise ValueError("Exactly one commit parent required")
     diff = subprocess.run(["git", "diff", "--name-status", parents[1], sha],
                           cwd=root, check=True, capture_output=True, text=True).stdout.splitlines()
-    if len(diff) != 1 or not diff[0].startswith("A\\t"):
+    if len(diff) != 1 or not diff[0].startswith("A\t"):
         raise ValueError("Exactly one added request file required")
-    rel = diff[0].split("\\t", 1)[1]
+    rel = diff[0].split("\t", 1)[1]
     if not re.fullmatch(PATH_PATTERN, rel):
         raise ValueError("Invalid request path")
     res = subprocess.run(["git", "show", sha + ":" + rel],
