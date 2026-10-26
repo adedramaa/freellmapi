@@ -64,6 +64,9 @@ jobs:
         run: python3 .github/agent/claude_issue_bridge.py prepare
       - name: Install real Claude Code official CLI
         run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Install official Remotion plugin for Claude Code
+        uses: ./.github/actions/setup-remotion
+
       - name: Install approved Anthropic document and design plugins
         shell: bash
         env:
