@@ -1,0 +1,145 @@
+name: Claude Code + Remotion - Cloud MP4 Videos
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/remotion-cloud-video.yml'
+      - '.github/agent/remotion_video_request.py'
+      - '.github/agent/test_remotion_video_request.py'
+      - 'video/remotion/**'
+  push:
+    branches: [remotion-requests]
+    paths:
+      - '.video-requests/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: remotion-video-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Checkout reviewed code for testing
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
+          persist-credentials: false
+      - name: Run request validation tests
+        run: python3 -m unittest discover -s .github/agent -p 'test_remotion_video_request.py' -v
+
+  render:
+    needs: [verify]
+    if: >-
+      github.repository == 'adedramaa/freellmapi' &&
+      (github.event_name == 'pull_request' ||
+       (github.event_name == 'push' &&
+        github.ref == 'refs/heads/remotion-requests' &&
+        startsWith(github.event.head_commit.message, 'remotion-video: ')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    permissions:
+      contents: read
+    env:
+      CI: 'true'
+      DISABLE_TELEMETRY: '1'
+    steps:
+      - name: Checkout reviewed code, never request-branch code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
+          persist-credentials: false
+      - name: Prepare validated request without executing submitted code
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, ".github/agent")
+          from remotion_video_request import validate_spec, write_files
+          write_files(validate_spec({
+              "title": "REMOTION LISTO",
+              "subtitle": "Claude Code + GitHub Actions",
+              "seconds": 3,
+              "use_claude": False,
+              "scenes": [
+                  {"heading": "CREAR", "caption": "Animaciones programáticas"},
+                  {"heading": "ANIMAR", "caption": "Cuadros fluidos en la nube"},
+                  {"heading": "EXPORTAR", "caption": "MP4 desde este chat"},
+              ],
+          }), Path(__import__("os").environ["RUNNER_TEMP"]) / "remotion-video")
+          PY
+          else
+            python3 .github/agent/remotion_video_request.py prepare
+          fi
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install genuine Claude Code and official Remotion plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code@2.1.296
+          claude --version
+      - name: Activate verified official Remotion plugin
+        uses: ./.github/actions/setup-remotion
+      - name: Ask real Claude Code to create the scene plan, if requested
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_SIMPLE: '1'
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '512'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          DISABLE_AUTOUPDATER: '1'
+        run: |
+          set -euo pipefail
+          DIR="$RUNNER_TEMP/remotion-video"
+          if [[ "$(cat "$DIR/claude-enabled.txt")" != true ]]; then
+            echo "Claude storyboard not requested; use validated scenes."
+          elif [[ -z "${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
+            echo "Claude gateway credential unavailable; use validated fallback scenes."
+          elif timeout 75 claude --bare             -p "$(cat "$DIR/claude-prompt.txt")"             --model "$ANTHROPIC_MODEL" --max-turns 1             --tools "" --disallowedTools 'mcp__*' --strict-mcp-config             --disable-slash-commands --no-session-persistence             --system-prompt "Output only strict JSON. No tools. Never run code."             --output-format text > "$DIR/claude-scene-output.txt" 2> "$DIR/claude-error.log"; then
+            if python3 .github/agent/remotion_video_request.py apply-claude "$DIR/claude-scene-output.txt" "$DIR"; then
+              echo "PASS: Real Claude Code created validated Remotion scenes."
+            else
+              echo "Claude scene output rejected; using previously validated fallback scenes."
+            fi
+          else
+            echo "Claude gateway unavailable; using previously validated fallback scenes."
+          fi
+      - name: Install isolated pinned Remotion libraries
+        working-directory: video/remotion
+        run: npm install --no-audit --no-fund
+      - name: Render MP4 in the cloud
+        working-directory: video/remotion
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          FRAMES="$(cat "$RUNNER_TEMP/remotion-video/duration.txt")"
+          ./node_modules/.bin/remotion render src/index.tsx CloudVideo out/video.mp4             --props="$RUNNER_TEMP/remotion-video/props.json"             --duration="$FRAMES" --codec=h264 --pixel-format=yuv420p             --concurrency=2 --log=error
+          test -s out/video.mp4
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_frames \
+            -of default=noprint_wrappers=1 out/video.mp4
+          echo "PASS: MP4 created and probed."
+      - name: Upload downloadable MP4, not source or credentials
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: remotion-mp4-${{ github.run_id }}
+          path: video/remotion/out/video.mp4
+          retention-days: 7
+          if-no-files-found: error
