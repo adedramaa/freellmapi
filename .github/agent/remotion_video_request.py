@@ -28,14 +28,17 @@ def limited_text(value: object, max_length: int, required: bool = True) -> str:
 def validate_spec(raw: object) -> dict:
     if not isinstance(raw, dict):
         raise ValueError("Request must be a JSON object")
-    if set(raw) - {"title", "subtitle", "background", "accent", "scenes", "seconds", "prompt", "use_claude"}:
+    if set(raw) - {"title", "subtitle", "background", "accent", "scenes", "seconds", "prompt", "use_claude", "kind"}:
         raise ValueError("Unknown keys in request")
     title = limited_text(raw.get("title", ""), 36)
     subtitle = limited_text(raw.get("subtitle", ""), 90, required=False)
     prompt = limited_text(raw.get("prompt", ""), 320, required=False)
+    kind = raw.get("kind", "motion")
+    if kind not in ("motion", "zombie-episode-1"):
+        raise ValueError("Unknown video composition")
     seconds = raw.get("seconds", 6)
-    if type(seconds) is not int or not 3 <= seconds <= 15:
-        raise ValueError("Duration must be 3-15 whole seconds")
+    if type(seconds) is not int or not (seconds == 40 if kind == "zombie-episode-1" else 3 <= seconds <= 15):
+        raise ValueError("Zombie video must be 40 seconds; other videos 3-15 seconds")
     background, accent = raw.get("background", "#0b1020"), raw.get("accent", "#76e8c7")
     if not isinstance(background, str) or not HEX_COLOR.fullmatch(background):
         raise ValueError("Background must be #RRGGBB")
@@ -68,6 +71,7 @@ def validate_spec(raw: object) -> dict:
         "seconds": seconds,
         "prompt": prompt,
         "use_claude": use_claude,
+        "kind": kind,
     }
 
 
@@ -110,12 +114,16 @@ def load_authorized_request(event: dict, root: Path) -> dict:
 
 def write_files(spec: dict, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
-    render_props = {key: spec[key] for key in ("title", "subtitle", "background", "accent", "scenes")}
+    render_props = {key: spec[key] for key in ("title", "subtitle", "background", "accent", "scenes", "kind")}
+    render_props["hasVoice"] = False
     (destination / "props.json").write_text(json.dumps(render_props, ensure_ascii=False), encoding="utf-8")
     (destination / "duration.txt").write_text(str(spec["seconds"] * 30), encoding="utf-8")
     (destination / "claude-enabled.txt").write_text(str(spec["use_claude"]).lower(), encoding="utf-8")
+    storyboard = ("Keep the five scenes in order: ordinary rainy home; emergency TV alert; zombies through the window; violent knocks on the door; grab a bag before deciding. " if spec["kind"] == "zombie-episode-1" else "")
     prompt = (
-        "Return ONLY one JSON array of 1 to 5 objects each with exactly heading and caption. "
+        "Return ONLY one JSON array of exactly 5 objects each with exactly heading and caption. " if spec["kind"] == "zombie-episode-1" else "Return ONLY one JSON array of 1 to 5 objects each with exactly heading and caption. "
+    ) + (
+        storyboard + 
         "Headings <=36 characters, captions <=90 characters, no markdown or commentary. "
         "Write concise, attractive, Spanish vertical-video motion graphic scenes. "
         "Do not include websites, links, executable text or markdown. "
@@ -128,7 +136,9 @@ def apply_claude(response: str, destination: Path) -> None:
     if len(response.encode("utf-8")) > 5000:
         raise ValueError("Claude response too long")
     scenes = json.loads(response.strip())
-    if not isinstance(scenes, list) or not 1 <= len(scenes) <= 5:
+    props = json.loads((destination / "props.json").read_text(encoding="utf-8"))
+    expected = 5 if props.get("kind") == "zombie-episode-1" else None
+    if not isinstance(scenes, list) or not 1 <= len(scenes) <= 5 or (expected and len(scenes) != expected):
         raise ValueError("Claude scenes invalid")
     out = []
     for item in scenes:
