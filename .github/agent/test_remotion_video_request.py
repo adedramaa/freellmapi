@@ -40,6 +40,29 @@ class VideoRequestTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_spec({**self.spec, "title": "abc\nxyz"})
 
+    def test_zombie_template_is_only_fixed_40_seconds(self):
+        zombie = {**self.spec, "kind": "zombie-episode-1", "seconds": 40}
+        validated = validate_spec(zombie)
+        self.assertEqual(validated["kind"], "zombie-episode-1")
+        self.assertEqual(validated["seconds"], 40)
+        with self.assertRaises(ValueError):
+            validate_spec({**zombie, "seconds": 120})
+        with self.assertRaises(ValueError):
+            validate_spec({**zombie, "seconds": 15})
+        with tempfile.TemporaryDirectory() as directory:
+            dest = Path(directory)
+            write_files(validated, dest)
+            self.assertEqual((dest / "duration.txt").read_text(), "1200")
+            self.assertFalse(json.loads((dest / "props.json").read_text())["hasVoice"])
+
+    def test_zombie_rejects_bad_storyboard(self):
+        zombie = {**self.spec, "kind": "zombie-episode-1", "seconds": 40}
+        with tempfile.TemporaryDirectory() as directory:
+            dest = Path(directory)
+            write_files(validate_spec(zombie), dest)
+            with self.assertRaises(ValueError):
+                apply_claude('[{"heading":"ONE","caption":"Not enough scenes"}]', dest)
+
     def test_write_and_reject_bad_claude(self):
         with tempfile.TemporaryDirectory() as directory:
             dest = Path(directory)
