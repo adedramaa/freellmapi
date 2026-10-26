@@ -1,7 +1,7 @@
 {
-  "status": "failure",
-  "run_id": "40399176316",
-  "commit": "77f70b10ef006cf3382e4352682a08a70dbcbc91",
+  "status": "success",
+  "run_id": "40400341963",
+  "commit": "69388ef0305e4729889a85aba9d3af12d1f51a2e",
   "mcp_handshake": true,
   "files": [
     {
@@ -13,12 +13,20 @@
       "bytes": 552552
     },
     {
+      "name": "documento.pdf",
+      "bytes": 8318
+    },
+    {
+      "name": "documento.png",
+      "bytes": 80036
+    },
+    {
       "name": "muestra.png",
       "bytes": 221560
     },
     {
-      "name": "agent-diagnostics.json",
-      "bytes": 713
+      "name": "documento.designcraft",
+      "bytes": 10426
     }
   ]
 }
