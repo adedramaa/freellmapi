@@ -1,0 +1,32 @@
+{
+  "title": "APOCALIPSIS Z",
+  "subtitle": "EP 01 · La primera alerta",
+  "kind": "zombie-episode-1",
+  "seconds": 40,
+  "prompt": "Crea cinco escenas muy breves: protagonista solo en casa con lluvia; alerta de infección en TV; personas huyendo y zombies en la calle; tres golpes en la puerta; mochila y decisión. Español cinematográfico, natural, tenso y claro. El cierre interactivo será A: atrincherarse, B: escapar.",
+  "background": "#0a151d",
+  "accent": "#62e8d0",
+  "use_claude": true,
+  "scenes": [
+    {
+      "heading": "UNA TARDE NORMAL",
+      "caption": "Estaba solo en casa. Entonces se cortó la señal."
+    },
+    {
+      "heading": "ALERTA NACIONAL",
+      "caption": "La noticia decía que nadie debía salir."
+    },
+    {
+      "heading": "INFECTADOS",
+      "caption": "Las calles estaban llenas de personas huyendo."
+    },
+    {
+      "heading": "TRES GOLPES",
+      "caption": "Alguien golpeó la puerta. Nadie respondió."
+    },
+    {
+      "heading": "SIN ESCAPATORIA",
+      "caption": "Necesitaba elegir antes de que entraran."
+    }
+  ]
+}
