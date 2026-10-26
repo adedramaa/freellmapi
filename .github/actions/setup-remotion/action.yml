@@ -1,0 +1,20 @@
+name: Setup official Remotion plugin for Claude Code
+description: Install Remotion's official Claude Code plugin in an ephemeral GitHub Actions runner.
+runs:
+  using: composite
+  steps:
+    - name: Install official Remotion marketplace and plugin
+      shell: bash
+      env:
+        DISABLE_TELEMETRY: '1'
+        GIT_TERMINAL_PROMPT: '0'
+        CI: 'true'
+      run: |
+        set -euo pipefail
+        command -v claude
+        claude plugin marketplace add remotion-dev/claude-code-plugin
+        claude plugin install remotion@remotion --scope project
+        claude plugin list | tee "$RUNNER_TEMP/remotion-plugin-list.txt"
+        grep -F 'remotion@remotion' "$RUNNER_TEMP/remotion-plugin-list.txt"
+        echo "PASS: official Remotion plugin installed for this Claude Code runner."
+        # Runners are ephemeral. Reuse this action in each video workflow.
