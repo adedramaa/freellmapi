@@ -81,19 +81,26 @@ def load_authorized_request(event: dict, root: Path) -> dict:
     commits, head = event.get("commits"), event.get("head_commit")
     if not isinstance(commits, list) or len(commits) != 1 or not isinstance(head, dict):
         raise ValueError("Exactly one commit required")
-    added, modified, removed = head.get("added"), head.get("modified"), head.get("removed")
-    if not isinstance(added, list) or len(added) != 1 or modified or removed:
-        raise ValueError("One new request file only")
-    rel = added[0]
-    if not isinstance(rel, str) or not re.fullmatch(PATH_PATTERN, rel):
-        raise ValueError("Invalid request path")
     if not str(head.get("message", "")).startswith("remotion-video: "):
         raise ValueError("Missing request commit prefix")
     sha = event.get("after")
     if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("Invalid commit identifier")
-    subprocess.run(["git", "fetch", "--no-tags", "--depth=1", "origin", sha],
+    if head.get("id") not in (None, sha):
+        raise ValueError("Event and commit SHA mismatch")
+    subprocess.run(["git", "fetch", "--no-tags", "--depth=2", "origin", sha],
                    cwd=root, check=True, capture_output=True)
+    parents = subprocess.run(["git", "rev-list", "--parents", "-n", "1", sha],
+                             cwd=root, check=True, capture_output=True, text=True).stdout.split()
+    if len(parents) != 2:
+        raise ValueError("Exactly one commit parent required")
+    diff = subprocess.run(["git", "diff", "--name-status", parents[1], sha],
+                          cwd=root, check=True, capture_output=True, text=True).stdout.splitlines()
+    if len(diff) != 1 or not diff[0].startswith("A\t"):
+        raise ValueError("Exactly one added request file required")
+    rel = diff[0].split("\t", 1)[1]
+    if not re.fullmatch(PATH_PATTERN, rel):
+        raise ValueError("Invalid request path")
     res = subprocess.run(["git", "show", sha + ":" + rel],
                          cwd=root, check=True, capture_output=True)
     if len(res.stdout) > 4500:
