@@ -19,6 +19,13 @@ def summarize_status(text: str) -> str:
         ("model-not-found", r"404|model.not.found"),
         ("transport", r"connection|fetch.failed|econn|socket"),
         ("unsupported-tool", r"unknown tool|unknown skill|not recognized|disable.*skill"),
+        ("invalid-cli-option", r"unknown option|unrecognized option|invalid option|unsupported flag"),
+        ("not-logged-in", r"not logged in|please log in|login required|no api key|missing.*key"),
+        ("non-interactive", r"cannot run.*interactive|terminal.*required|prompt.*tty"),
+        ("plugin-load", r"plugin.*(error|failed)|skill.*(error|failed)|cannot load.*skill"),
+        ("invalid-cli-value", r"invalid.*(argument|value|choice)|expects.*argument"),
+        ("failed-permission", r"permission denied|not permitted|restricted"),
+        ("fatal-process", r"fatal error|uncaught|node.js v"),
     ):
         if re.search(regex, text):
             return category
@@ -61,7 +68,10 @@ def main():
     mode, name = sys.argv[1:3]
     data = Path(name).read_text(encoding="utf-8", errors="replace")
     if mode == "status":
-        print("CLAUDE_DIAGNOSTIC:", summarize_status(data))
+        print("CLAUDE_DIAGNOSTIC:", summarize_status(data), "stderr_bytes:", len(data.encode()))
+        sample = data.lower()
+        terms = ("invalid", "unknown", "error", "fail", "login", "auth", "permission", "model", "token", "plugin", "skill", "url", "config", "setting", "prompt", "system", "tool")
+        print("ERROR_KEYWORDS:", [w for w in terms if w in sample])
         sys.exit(0)
     if mode != "assert":
         raise ValueError("Unknown command")
