@@ -124,13 +124,36 @@ jobs:
           test "${#DESIGNCRAFT_REQUEST}" -le 2400
           cd "$RUNNER_TEMP/docs"
           printf 'Use ONLY DesignCraft MCP tools; save a .designcraft document and a PDF in %s. The user asks: %s\n' "$RUNNER_TEMP/docs" "$DESIGNCRAFT_REQUEST" > "$RUNNER_TEMP/prompt.txt"
+          AGENT_EXIT=0
           timeout 190 claude -p "$(cat "$RUNNER_TEMP/prompt.txt")" \
             --model "$ANTHROPIC_MODEL" --max-turns 7 \
             --mcp-config "$RUNNER_TEMP/mcp.json" --strict-mcp-config \
             --tools "" --allowedTools "mcp__designcraft__*" \
             --permission-mode dontAsk --disable-slash-commands \
             --no-session-persistence --output-format stream-json --verbose \
-            > "$RUNNER_TEMP/agent.jsonl" 2> "$RUNNER_TEMP/agent.stderr"
+            > "$RUNNER_TEMP/agent.jsonl" 2> "$RUNNER_TEMP/agent.stderr" || AGENT_EXIT=$?
+          AGENT_EXIT="$AGENT_EXIT" python3 - <<'PY'
+          import os,json,pathlib,re
+          r=pathlib.Path(os.environ['RUNNER_TEMP'])
+          err=(r/'agent.stderr').read_text(errors='replace') if (r/'agent.stderr').exists() else ''
+          secret=os.getenv('ANTHROPIC_AUTH_TOKEN','')
+          if secret:err=err.replace(secret,'[REDACTED]')
+          err=re.sub(r'sk-[A-Za-z0-9_-]{12,}','[REDACTED]',err)
+          lines=[x[:220] for x in err.splitlines() if x.strip()][-6:]
+          events=[]
+          if (r/'agent.jsonl').exists():
+              for x in (r/'agent.jsonl').read_text(errors='replace').splitlines():
+                  try:v=json.loads(x)
+                  except:continue
+                  if v.get('type') in ('result','system','error'):
+                      events.append({'type':v.get('type'),'subtype':v.get('subtype'),
+                                     'is_error':v.get('is_error'),
+                                     'result':str(v.get('result',''))[:360]})
+          result={'exit_code':int(os.getenv('AGENT_EXIT','1')),'stderr_tail':lines,'events':events[-5:]}
+          (r/'docs'/'agent-diagnostics.json').write_text(json.dumps(result,indent=2))
+          print('Sanitized Claude diagnostics:',json.dumps(result)[:1800])
+          PY
+          test "$AGENT_EXIT" -eq 0
           python3 - <<'PY'
           import os,json,pathlib
           r=pathlib.Path(os.environ['RUNNER_TEMP'])
@@ -177,7 +200,7 @@ jobs:
           PY
           LOCATION="repos/$GITHUB_REPOSITORY/contents/.designcraft-output/status.json"
           CONTENT="$(base64 -w0 "$RUNNER_TEMP/designcraft-status.json")"
-          OLD_SHA="$(gh api "$LOCATION" -f ref=designcraft-requests --jq '.sha' 2>/dev/null || true)"
+          OLD_SHA="$(gh api -X GET "$LOCATION" -f ref=designcraft-requests --jq '.sha' 2>/dev/null || true)"
           if [[ -n "$OLD_SHA" ]]; then
             gh api -X PUT "$LOCATION" -f branch=designcraft-requests \
               -f message='ci(designcraft): record verified cloud run result' \
