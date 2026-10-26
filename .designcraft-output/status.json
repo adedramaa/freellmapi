@@ -1,7 +1,7 @@
 {
   "status": "failure",
-  "run_id": "40398712532",
-  "commit": "fc06d9fbef15a574e3766e9fde02bc144dabc619",
+  "run_id": "40399176316",
+  "commit": "77f70b10ef006cf3382e4352682a08a70dbcbc91",
   "mcp_handshake": true,
   "files": [
     {
@@ -15,6 +15,10 @@
     {
       "name": "muestra.png",
       "bytes": 221560
+    },
+    {
+      "name": "agent-diagnostics.json",
+      "bytes": 713
     }
   ]
 }
