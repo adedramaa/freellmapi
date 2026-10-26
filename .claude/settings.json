@@ -23,6 +23,12 @@
         "source": "github",
         "repo": "pbakaus/impeccable"
       }
+    },
+    "remotion": {
+      "source": {
+        "source": "github",
+        "repo": "remotion-dev/claude-code-plugin"
+      }
     }
   },
   "enabledPlugins": {
@@ -30,6 +36,7 @@
     "example-skills@anthropic-agent-skills": true,
     "taste-skill@taste-skill": true,
     "ui-ux-pro-max@ui-ux-pro-max-skill": true,
-    "impeccable@impeccable": true
+    "impeccable@impeccable": true,
+    "remotion@remotion": true
   }
 }
