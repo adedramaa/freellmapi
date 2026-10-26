@@ -3,10 +3,8 @@ name: DesignCraft - Cloud MCP
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths: ['.github/workflows/designcraft-cloud.yml']
-  issues:
-    types: [opened]
+    branches: [main, designcraft-requests]
+    paths: ['.github/workflows/designcraft-cloud.yml', '.designcraft-requests/**']
 
 permissions:
   contents: read
@@ -15,9 +13,11 @@ jobs:
   designcraft:
     if: >-
       github.repository == 'adedramaa/freellmapi' &&
-      (github.event_name != 'issues' ||
-       (github.event.issue.user.login == 'adedramaa' &&
-        startsWith(github.event.issue.title, 'designcraft:')))
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' &&
+        (github.ref == 'refs/heads/main' ||
+         (github.ref == 'refs/heads/designcraft-requests' &&
+          startsWith(github.event.head_commit.message, 'designcraft-task:')))))
     runs-on: ubuntu-24.04
     timeout-minutes: 16
     permissions:
@@ -91,12 +91,20 @@ jobs:
                   except subprocess.TimeoutExpired:proc.kill()
           PY
 
+      - name: Checkout request data from isolated branch (never execute its code)
+        if: github.ref == 'refs/heads/designcraft-requests'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: designcraft-requests
+          path: designcraft-request
+          persist-credentials: false
+
       - name: Install Claude Code on demand
-        if: github.event_name == 'issues'
+        if: github.ref == 'refs/heads/designcraft-requests'
         run: npm install --global @anthropic-ai/claude-code@2.1.296
 
       - name: Run Claude Code using DesignCraft MCP
-        if: github.event_name == 'issues'
+        if: github.ref == 'refs/heads/designcraft-requests'
         shell: bash
         env:
           ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
@@ -107,10 +115,14 @@ jobs:
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
           DISABLE_TELEMETRY: '1'
           DISABLE_AUTOUPDATER: '1'
-          DESIGNCRAFT_REQUEST: '${{ github.event.issue.body }}'
         run: |
           set -euo pipefail
           test -n "$ANTHROPIC_AUTH_TOKEN"
+          REQUEST_FILE="$GITHUB_WORKSPACE/designcraft-request/.designcraft-requests/request.txt"
+          test -f "$REQUEST_FILE"
+          DESIGNCRAFT_REQUEST="$(cat "$REQUEST_FILE")"
+          test -n "$DESIGNCRAFT_REQUEST"
+          test "${#DESIGNCRAFT_REQUEST}" -le 2400
           cd "$RUNNER_TEMP/docs"
           printf 'Use ONLY DesignCraft MCP tools; save a .designcraft document and a PDF in %s. The user asks: %s\n' "$RUNNER_TEMP/docs" "$DESIGNCRAFT_REQUEST" > "$RUNNER_TEMP/prompt.txt"
           timeout 190 claude -p "$(cat "$RUNNER_TEMP/prompt.txt")" \
@@ -144,12 +156,3 @@ jobs:
           retention-days: 3
           if-no-files-found: warn
 
-      - name: Report status to originating issue
-        if: always() && github.event_name == 'issues'
-        env:
-          GH_TOKEN: '${{ github.token }}'
-          ISSUE: '${{ github.event.issue.number }}'
-          STATUS: '${{ job.status }}'
-        run: |
-          echo "DesignCraft MCP cloud: $STATUS. Files: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (artifact designcraft-docs-$GITHUB_RUN_ID)." > "$RUNNER_TEMP/issue-status.txt"
-          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/issue-status.txt"
