@@ -1,0 +1,50 @@
+{
+  "checkedAt": "2026-10-26T20:54:33.940Z",
+  "results": [
+    {
+      "task": "desktop-webgl",
+      "url": "https://adedrama-designcraft-web.vercel.app/?webgl",
+      "httpStatus": 200,
+      "title": "DesignCraft",
+      "loadingVisible": false,
+      "canvasPresent": true,
+      "canvasWidth": 1440,
+      "canvasHeight": 900,
+      "webGPU": true,
+      "webGL2": true,
+      "errors": [],
+      "requestsFailed": [],
+      "ready": true
+    },
+    {
+      "task": "android-webgl",
+      "url": "https://adedrama-designcraft-web.vercel.app/?webgl",
+      "httpStatus": 200,
+      "title": "DesignCraft",
+      "loadingVisible": false,
+      "canvasPresent": true,
+      "canvasWidth": 390,
+      "canvasHeight": 844,
+      "webGPU": true,
+      "webGL2": true,
+      "errors": [],
+      "requestsFailed": [],
+      "ready": true
+    },
+    {
+      "task": "desktop-auto",
+      "url": "https://adedrama-designcraft-web.vercel.app/",
+      "httpStatus": 200,
+      "title": "DesignCraft",
+      "loadingVisible": false,
+      "canvasPresent": true,
+      "canvasWidth": 1440,
+      "canvasHeight": 900,
+      "webGPU": true,
+      "webGL2": true,
+      "errors": [],
+      "requestsFailed": [],
+      "ready": true
+    }
+  ]
+}
