@@ -132,24 +132,71 @@ def write_files(spec: dict, destination: Path) -> None:
     (destination / "claude-prompt.txt").write_text(prompt, encoding="utf-8")
 
 
-def apply_claude(response: str, destination: Path) -> None:
+def parse_claude_scene_text(response: str) -> list:
+    """Decode JSON even when a free model adds fences or trailing commentary.
+
+    No code execution or eval: only the first valid JSON array or scenes envelope
+    is accepted, capped by the strict schema checks below.
+    """
     if len(response.encode("utf-8")) > 5000:
         raise ValueError("Claude response too long")
-    scenes = json.loads(response.strip())
-    props = json.loads((destination / "props.json").read_text(encoding="utf-8"))
+    decoder = json.JSONDecoder()
+    candidates = [response.strip()]
+    for marker in ("[", "{"):
+        pos = response.find(marker)
+        if pos >= 0:
+            candidates.append(response[pos:])
+    for candidate in candidates:
+        try:
+            data, _ = decoder.raw_decode(candidate.lstrip())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict) and isinstance(data.get("scenes"), list):
+            return data["scenes"]
+    # Some free models emit consecutive JSON objects rather than an array.
+    items = []
+    cursor = response.strip()
+    while cursor and len(items) < 6:
+        cursor = cursor.lstrip(" \\r\\n\\t,")
+        if cursor.startswith("```"):
+            break
+        try:
+            obj, offset = decoder.raw_decode(cursor)
+        except json.JSONDecodeError:
+            break
+        if not isinstance(obj, dict):
+            break
+        items.append(obj)
+        cursor = cursor[offset:]
+    if len(items) >= 3:
+        return items
+    raise ValueError("Claude scene JSON could not be parsed")
+
+
+def apply_claude(response: str, destination: Path) -> None:
+    scenes = parse_claude_scene_text(response)
+    p = destination / "props.json"
+    props = json.loads(p.read_text(encoding="utf-8"))
     expected = 5 if props.get("kind") == "zombie-episode-1" else None
-    if not isinstance(scenes, list) or not 1 <= len(scenes) <= 5 or (expected and len(scenes) != expected):
-        raise ValueError("Claude scenes invalid")
+    if not isinstance(scenes, list) or not 1 <= len(scenes) <= 6 or (expected and len(scenes) < 3):
+        raise ValueError("Claude must return at least three valid storyboard scenes")
     out = []
-    for item in scenes:
+    for item in scenes[:5]:
         if not isinstance(item, dict) or set(item) != {"heading", "caption"}:
             raise ValueError("Claude scene schema invalid")
         out.append({"heading": limited_text(item["heading"], 36),
                     "caption": limited_text(item["caption"], 90, required=False)})
-    p = destination / "props.json"
-    props = json.loads(p.read_text(encoding="utf-8"))
+    contributed = len(out)
+    if expected and len(out) < expected:
+        originals = props.get("scenes", [])
+        if len(originals) < expected:
+            raise ValueError("Missing owner-approved scenes for completion")
+        out.extend(originals[len(out):expected])
     props["scenes"] = out
     p.write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
+    print("CLAUDE_SCENES_USED:", contributed, "total scenes:", len(out))
 
 
 def main() -> None:
