@@ -68,10 +68,11 @@ jobs:
                   except Exception:
                       typ="non_json";code=""
                   print("GATEWAY: http=",e.code,"error_type=",str(typ)[:50],"error_code=",str(code)[:50])
+                  if e.code == 429:
+                      sys.exit(5)
               except Exception as e:
                   print("GATEWAY: transport_failure=",type(e).__name__)
-              if attempt<2 and getattr(e,"code",0)!=429: time.sleep(12)
-              else: break
+              if attempt<2: time.sleep(12)
           sys.exit(4)
           PY
       - name: Install real Claude Code
