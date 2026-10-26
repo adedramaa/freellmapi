@@ -65,11 +65,13 @@ jobs:
                   let canvas=document.getElementById('designcraft_canvas');
                   return {title:document.title,loadingVisible:loading,canvasPresent:Boolean(canvas),
                     canvasWidth:canvas?.width,canvasHeight:canvas?.height,
+                    viewportMeta:document.querySelector('meta[name=viewport]')?.getAttribute('content'),
                     webGPU: Boolean(navigator.gpu),webGL2: Boolean(document.createElement('canvas').getContext('webgl2'))};
                 });
                 results.push({task:task.name,url:task.url,httpStatus:responseStatus,...state,
                   errors:errors.slice(-5),requestsFailed:failures.slice(-8),
-                  ready:responseStatus===200 && Boolean(state.canvasPresent) && !state.loadingVisible});
+                  ready:responseStatus===200 && Boolean(state.canvasPresent) && !state.loadingVisible,
+                  mobileLayoutFixActive:task.mobile ? state.viewportMeta?.includes('width=1050') : null});
               }catch(e){
                 results.push({task:task.name,httpStatus:responseStatus,ready:false,exception:String(e).slice(0,700),
                   errors:errors.slice(-5),requestsFailed:failures.slice(-8)});
