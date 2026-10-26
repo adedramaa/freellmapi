@@ -1,0 +1,81 @@
+name: Claude Code - Official Remotion Plugin Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/remotion-claude-install-verify.yml'
+      - '.github/actions/setup-remotion/**'
+      - '.claude/settings.json'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/remotion-claude-install-verify.yml'
+      - '.github/actions/setup-remotion/**'
+      - '.claude/settings.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: remotion-claude-install-verify-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-remotion:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout without write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify official marketplace is enabled in Claude project
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          s = json.loads(Path(".claude/settings.json").read_text(encoding="utf-8"))
+          assert s["extraKnownMarketplaces"]["remotion"]["source"] == {
+              "source": "github", "repo": "remotion-dev/claude-code-plugin"
+          }
+          assert s["enabledPlugins"]["remotion@remotion"] is True
+          print("PASS: Remotion marketplace and plugin enabled.")
+          PY
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Install official Claude Code CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @anthropic-ai/claude-code@2.1.296
+          claude --version
+
+      - name: Install and verify official Remotion plugin
+        uses: ./.github/actions/setup-remotion
+
+      - name: Smoke-test Remotion framework and CLI in a temporary project
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/remotion-smoke"
+          cd "$RUNNER_TEMP/remotion-smoke"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund remotion @remotion/cli react react-dom
+          ./node_modules/.bin/remotion --version
+          echo "PASS: Remotion framework and CLI available in cloud runner."
+
+      - name: State deployment boundary
+        shell: bash
+        run: |
+          echo "No model API keys, no rendering, no publishing, no GitHub write permissions."
+          echo "Installed tools exist on ephemeral runners only; video workflows must use setup-remotion."
