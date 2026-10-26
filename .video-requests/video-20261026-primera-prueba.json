@@ -1,0 +1,23 @@
+{
+  "title": "CLAUDE + REMOTION",
+  "subtitle": "Video creado desde ChatGPT · Costo adicional cero",
+  "seconds": 5,
+  "prompt": "Un lanzamiento tecnológico futurista con tres escenas cortas sobre crear, animar y exportar videos desde ChatGPT usando Claude Code y Remotion. Texto natural en español.",
+  "background": "#081024",
+  "accent": "#65f1c6",
+  "use_claude": true,
+  "scenes": [
+    {
+      "heading": "TU IDEA",
+      "caption": "Descríbela desde el chat"
+    },
+    {
+      "heading": "CLAUDE CODE",
+      "caption": "Organiza escenas para Remotion"
+    },
+    {
+      "heading": "MP4 LISTO",
+      "caption": "Renderizado en la nube, sin PC"
+    }
+  ]
+}
