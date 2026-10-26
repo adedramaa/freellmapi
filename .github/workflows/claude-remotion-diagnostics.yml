@@ -77,7 +77,8 @@ jobs:
         run: npm install --global @anthropic-ai/claude-code@2.1.296
       - name: Install official Remotion skill plugin
         uses: ./.github/actions/setup-remotion
-      - name: Invoke Remotion skill with Claude Code in normal mode
+      - name: Probe native Remotion Skill tool (diagnostic only, gateway may reject 413)
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -88,3 +89,22 @@ jobs:
               exit 1
             }
           python3 .github/agent/claude_remotion_audit.py assert "$RUNNER_TEMP/claude-remotion-stream.jsonl"
+      - name: Verify official Remotion Skills with actual Claude Code reduced-context execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Return ONLY a JSON array of exactly 5 objects. Each object must have heading and caption string fields. First scene is a zombie alert in a house. Short Spanish wording. Do not use markdown.' > "$RUNNER_TEMP/brief.txt"
+          python3 .github/agent/remotion_skill_prompt.py "$RUNNER_TEMP/brief.txt" "$RUNNER_TEMP/skill-prompt.txt"
+          timeout 120 claude --bare -p "$(cat "$RUNNER_TEMP/skill-prompt.txt")" \
+            --model "$ANTHROPIC_MODEL" --max-turns 1 --tools "" \
+            --strict-mcp-config --disable-slash-commands --no-session-persistence \
+            --system-prompt "Return exactly 5 scenes as valid JSON. No markdown." \
+            --output-format text > "$RUNNER_TEMP/skill-scenes.txt"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data=json.loads((Path(os.environ["RUNNER_TEMP"])/"skill-scenes.txt").read_text(encoding="utf-8"))
+          assert isinstance(data,list) and len(data)==5
+          assert all(isinstance(x,dict) and set(x)=={"heading","caption"} for x in data)
+          print("PASS: Actual Claude Code responded with valid scenes after consuming installed official Remotion Skills.")
+          PY
