@@ -68,14 +68,17 @@ jobs:
           sys.path.insert(0, ".github/agent")
           from remotion_video_request import validate_spec, write_files
           write_files(validate_spec({
-              "title": "REMOTION LISTO",
-              "subtitle": "Claude Code + GitHub Actions",
-              "seconds": 3,
+              "title": "APOCALIPSIS Z",
+              "subtitle": "Episodio 1 · ¿Qué harías?",
+              "kind": "zombie-episode-1",
+              "seconds": 40,
               "use_claude": False,
               "scenes": [
-                  {"heading": "CREAR", "caption": "Animaciones programáticas"},
-                  {"heading": "ANIMAR", "caption": "Cuadros fluidos en la nube"},
-                  {"heading": "EXPORTAR", "caption": "MP4 desde este chat"},
+                  {"heading": "EN CASA", "caption": "Una tarde de lluvia. No sospechaba lo que venía."},
+                  {"heading": "ALERTA", "caption": "La televisión lanzó una advertencia: no salgas."},
+                  {"heading": "VENTANA", "caption": "La calle estaba llena de gritos y sombras."},
+                  {"heading": "ALGO NO ESTÁ BIEN", "caption": "Mis vecinos parecían haberse transformado."},
+                  {"heading": "LA PUERTA", "caption": "De pronto, tres golpes retumbaron."},
               ],
           }), Path(__import__("os").environ["RUNNER_TEMP"]) / "remotion-video")
           PY
@@ -124,6 +127,17 @@ jobs:
       - name: Install isolated pinned Remotion libraries
         working-directory: video/remotion
         run: npm install --no-audit --no-fund
+      - name: Create original suspense soundtrack and optional Spanish narration
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: |
+          set -euo pipefail
+          KIND="$(python3 -c 'import json,os;print(json.load(open(os.environ["RUNNER_TEMP"]+"/remotion-video/props.json"))["kind"])')"
+          if [[ "$KIND" == "zombie-episode-1" ]]; then
+            python3 -m pip install --quiet --disable-pip-version-check edge-tts
+            python3 video/remotion/scripts/generate_audio.py "$RUNNER_TEMP/remotion-video/props.json" "video/remotion/public"
+          fi
       - name: Render MP4 in the cloud
         working-directory: video/remotion
         shell: bash
@@ -131,7 +145,9 @@ jobs:
           set -euo pipefail
           mkdir -p out
           FRAMES="$(cat "$RUNNER_TEMP/remotion-video/duration.txt")"
-          ./node_modules/.bin/remotion render src/index.tsx CloudVideo out/video.mp4             --props="$RUNNER_TEMP/remotion-video/props.json"             --duration="$FRAMES" --codec=h264 --pixel-format=yuv420p             --concurrency=2 --log=error
+          KIND="$(python3 -c 'import json,os;print(json.load(open(os.environ["RUNNER_TEMP"]+"/remotion-video/props.json"))["kind"])')"
+          if [[ "$KIND" == "zombie-episode-1" ]]; then COMPOSITION="ZombieEpisode"; else COMPOSITION="CloudVideo"; fi
+          ./node_modules/.bin/remotion render src/index.tsx "$COMPOSITION" out/video.mp4             --props="$RUNNER_TEMP/remotion-video/props.json"             --duration="$FRAMES" --codec=h264 --pixel-format=yuv420p             --concurrency=2 --log=error
           test -s out/video.mp4
           python3 - <<'PY'
           from pathlib import Path
