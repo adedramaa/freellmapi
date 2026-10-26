@@ -1,0 +1,119 @@
+name: DesignCraft - Web Visual QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/designcraft-browser-qa.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  visual:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Install browser test framework
+        shell: bash
+        run: |
+          set -euo pipefail
+          google-chrome --version
+          mkdir -p "$RUNNER_TEMP/browser-qa" "$RUNNER_TEMP/browser-tools"
+          npm install --prefix "$RUNNER_TEMP/browser-tools" --no-audit --no-fund playwright@1.56.1
+          node -p "require('$RUNNER_TEMP/browser-tools/node_modules/playwright/package.json').version"
+
+      - name: Exercise production WebAssembly editor on real Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/browser-qa/test.cjs" <<'JS'
+          const {chromium} = require(process.env.RUNNER_TEMP+'/browser-tools/node_modules/playwright');
+          const fs=require('fs'),path=require('path');
+          const out=path.join(process.env.RUNNER_TEMP,'browser-qa');
+          (async()=>{
+            const browser=await chromium.launch({
+              channel:'chrome',headless:true,
+              args:['--no-sandbox','--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']
+            });
+            const results=[];
+            for(const task of [
+              {name:'desktop-webgl',url:'https://adedrama-designcraft-web.vercel.app/?webgl',width:1440,height:900,mobile:false},
+              {name:'android-webgl',url:'https://adedrama-designcraft-web.vercel.app/?webgl',width:390,height:844,mobile:true},
+              {name:'desktop-auto',url:'https://adedrama-designcraft-web.vercel.app/',width:1440,height:900,mobile:false}
+            ]){
+              const ctx=await browser.newContext({viewport:{width:task.width,height:task.height},
+                isMobile:task.mobile,hasTouch:task.mobile,deviceScaleFactor:1});
+              const page=await ctx.newPage();
+              const errors=[];const failures=[];
+              page.on('pageerror',e=>errors.push(String(e).slice(0,450)));
+              page.on('requestfailed',r=>failures.push(r.url().split('?')[0]+' '+r.failure()?.errorText));
+              let responseStatus=null;
+              try {
+                const response=await page.goto(task.url,{waitUntil:'domcontentloaded',timeout:60000});
+                responseStatus=response?.status();
+                await page.waitForFunction(()=>{
+                  const e=document.getElementById('designcraft_loading');
+                  return !e || getComputedStyle(e).display==='none' || getComputedStyle(e).visibility==='hidden';
+                },null,{timeout:30000}).catch(()=>{});
+                await page.screenshot({path:path.join(out,task.name+'.png'),timeout:20000});
+                const state=await page.evaluate(()=>{
+                  let el=document.getElementById('designcraft_loading');
+                  let loading=Boolean(el) && getComputedStyle(el).display!=='none' &&
+                    getComputedStyle(el).visibility!=='hidden';
+                  let canvas=document.getElementById('designcraft_canvas');
+                  return {title:document.title,loadingVisible:loading,canvasPresent:Boolean(canvas),
+                    canvasWidth:canvas?.width,canvasHeight:canvas?.height,
+                    webGPU: Boolean(navigator.gpu),webGL2: Boolean(document.createElement('canvas').getContext('webgl2'))};
+                });
+                results.push({task:task.name,url:task.url,httpStatus:responseStatus,...state,
+                  errors:errors.slice(-5),requestsFailed:failures.slice(-8),
+                  ready:responseStatus===200 && Boolean(state.canvasPresent) && !state.loadingVisible});
+              }catch(e){
+                results.push({task:task.name,httpStatus:responseStatus,ready:false,exception:String(e).slice(0,700),
+                  errors:errors.slice(-5),requestsFailed:failures.slice(-8)});
+              }finally { await ctx.close(); }
+            }
+            await browser.close();
+            const result={checkedAt:new Date().toISOString(),results};
+            fs.writeFileSync(path.join(out,'visual-status.json'),JSON.stringify(result,null,2));
+            console.log(JSON.stringify(result));
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
+          node "$RUNNER_TEMP/browser-qa/test.cjs"
+
+      - name: Upload screenshots and browser status
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: designcraft-browser-qa-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/browser-qa/*.png
+            ${{ runner.temp }}/browser-qa/visual-status.json
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Publish visual result to dedicated branch
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          RESULT: '${{ job.status }}'
+        run: |
+          set -euo pipefail
+          FILE="$RUNNER_TEMP/browser-qa/visual-status.json"
+          if [[ ! -f "$FILE" ]]; then
+            printf '{"error":"browser script failed","job":"%s","runId":"%s"}\n' "$RESULT" "$GITHUB_RUN_ID" > "$FILE"
+          fi
+          LOCATION="repos/$GITHUB_REPOSITORY/contents/.designcraft-output/web-status.json"
+          CONTENT="$(base64 -w0 "$FILE")"
+          OLD_SHA="$(gh api -X GET "$LOCATION" -f ref=designcraft-requests --jq .sha 2>/dev/null || true)"
+          if [[ -n "$OLD_SHA" ]]; then
+            gh api -X PUT "$LOCATION" -f branch=designcraft-requests -f message='ci(designcraft): publish browser validation' \
+              -f content="$CONTENT" -f sha="$OLD_SHA" >/dev/null
+          else
+            gh api -X PUT "$LOCATION" -f branch=designcraft-requests -f message='ci(designcraft): publish browser validation' \
+              -f content="$CONTENT" >/dev/null
+          fi
+          echo "Web visual status published to branch designcraft-requests."
