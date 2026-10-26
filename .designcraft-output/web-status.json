@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-26T20:54:33.940Z",
+  "checkedAt": "2026-10-26T21:03:21.855Z",
   "results": [
     {
       "task": "desktop-webgl",
@@ -10,11 +10,13 @@
       "canvasPresent": true,
       "canvasWidth": 1440,
       "canvasHeight": 900,
+      "viewportMeta": "width=device-width, initial-scale=1",
       "webGPU": true,
       "webGL2": true,
       "errors": [],
       "requestsFailed": [],
-      "ready": true
+      "ready": true,
+      "mobileLayoutFixActive": null
     },
     {
       "task": "android-webgl",
@@ -23,13 +25,15 @@
       "title": "DesignCraft",
       "loadingVisible": false,
       "canvasPresent": true,
-      "canvasWidth": 390,
-      "canvasHeight": 844,
+      "canvasWidth": 1054,
+      "canvasHeight": 2281,
+      "viewportMeta": "width=1050, initial-scale=0.37, maximum-scale=5, user-scalable=yes",
       "webGPU": true,
       "webGL2": true,
       "errors": [],
       "requestsFailed": [],
-      "ready": true
+      "ready": true,
+      "mobileLayoutFixActive": true
     },
     {
       "task": "desktop-auto",
@@ -40,11 +44,13 @@
       "canvasPresent": true,
       "canvasWidth": 1440,
       "canvasHeight": 900,
+      "viewportMeta": "width=device-width, initial-scale=1",
       "webGPU": true,
       "webGL2": true,
       "errors": [],
       "requestsFailed": [],
-      "ready": true
+      "ready": true,
+      "mobileLayoutFixActive": null
     }
   ]
 }
