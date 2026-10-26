@@ -98,12 +98,52 @@ jobs:
           path: designcraft-request
           persist-credentials: false
 
-      - name: Install Claude Code on demand
+      - name: Run safe ChatGPT-authored DesignCraft script when present
+        id: scripting
         if: github.ref == 'refs/heads/designcraft-requests'
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT="$GITHUB_WORKSPACE/designcraft-request/.designcraft-requests/layout.dcs"
+          if [[ ! -f "$SCRIPT" ]]; then
+            echo "scripted=false" >> "$GITHUB_OUTPUT"
+            echo "No authored script found; switch to Claude Code MCP."
+            exit 0
+          fi
+          python3 - "$SCRIPT" <<'PY'
+          import json,sys,pathlib
+          path=pathlib.Path(sys.argv[1])
+          content=path.read_text(encoding='utf-8-sig')
+          assert 0 < len(content) < 12000, 'script too long/empty'
+          cmds=[s for s in content.splitlines() if s.strip() and not s.strip().startswith('#')]
+          assert 1 <= len(cmds) <= 25, 'too many commands'
+          for line in cmds:
+              action,sep,body=line.partition(' ')
+              assert sep and action == 'frame.create', 'only frame.create command is allowed'
+              obj=json.loads(body)
+              assert set(obj.keys()) == {'rect','content','text'}, 'unexpected parameter'
+              assert obj['content']=='text' and isinstance(obj['text'],str) and len(obj['text'])<=600, 'unsafe content'
+              rect=obj['rect']
+              assert isinstance(rect,list) and len(rect)==4 and all(isinstance(n,(int,float)) and 0<=n<=1500 for n in rect), 'invalid rectangle'
+              assert rect[0]<rect[2] and rect[1]<rect[3], 'invalid rectangle bounds'
+          print('PASS: constrained publishing commands validated:',len(cmds))
+          PY
+          timeout 95 designcraft-cli script "$SCRIPT" \
+            --save "$RUNNER_TEMP/docs/documento.designcraft" \
+            --export "$RUNNER_TEMP/docs/documento.pdf" \
+            --export "$RUNNER_TEMP/docs/documento.png"
+          test -s "$RUNNER_TEMP/docs/documento.designcraft"
+          test -s "$RUNNER_TEMP/docs/documento.pdf"
+          test -s "$RUNNER_TEMP/docs/documento.png"
+          echo "scripted=true" >> "$GITHUB_OUTPUT"
+          echo 'PASS: ChatGPT instructions executed by real DesignCraft: editable, PDF and PNG saved.'
+
+      - name: Install Claude Code on demand
+        if: github.ref == 'refs/heads/designcraft-requests' && steps.scripting.outputs.scripted != 'true'
         run: npm install --global @anthropic-ai/claude-code@2.1.296
 
       - name: Run Claude Code using DesignCraft MCP
-        if: github.ref == 'refs/heads/designcraft-requests'
+        if: github.ref == 'refs/heads/designcraft-requests' && steps.scripting.outputs.scripted != 'true'
         shell: bash
         env:
           ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
