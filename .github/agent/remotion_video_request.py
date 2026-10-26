@@ -159,7 +159,7 @@ def parse_claude_scene_text(response: str) -> list:
     items = []
     cursor = response.strip()
     while cursor and len(items) < 6:
-        cursor = cursor.lstrip(" \\r\\n\\t,")
+        cursor = cursor.lstrip(" \r\n\t,")
         if cursor.startswith("```"):
             break
         try:
