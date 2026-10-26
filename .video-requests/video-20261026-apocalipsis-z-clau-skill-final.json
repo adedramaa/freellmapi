@@ -1,0 +1,32 @@
+{
+  "title": "APOCALIPSIS Z",
+  "subtitle": "Episodio 01 · La primera alerta",
+  "kind": "zombie-episode-1",
+  "seconds": 40,
+  "prompt": "Crea cinco subtítulos muy breves para una historia zombie: tarde lluviosa en casa; alerta nacional en TV; vecinos infectados afuera; golpes violentos en la puerta; preparar mochila. Suspenso cinematográfico, español natural. La votación final es A resistir en casa o B escapar. Evita spoilers.",
+  "background": "#08121b",
+  "accent": "#67e4d4",
+  "use_claude": true,
+  "scenes": [
+    {
+      "heading": "EN CASA",
+      "caption": "Estaba solo cuando llegó el primer aviso."
+    },
+    {
+      "heading": "EMERGENCIA",
+      "caption": "La televisión ordenó no salir."
+    },
+    {
+      "heading": "POR LA VENTANA",
+      "caption": "Los vecinos corrían por sus vidas."
+    },
+    {
+      "heading": "LOS INFECTADOS",
+      "caption": "Algunos ya no parecían humanos."
+    },
+    {
+      "heading": "LA DECISIÓN",
+      "caption": "Los golpes empezaron. Necesitaba actuar."
+    }
+  ]
+}
