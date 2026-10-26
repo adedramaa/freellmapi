@@ -1,0 +1,32 @@
+{
+  "title": "APOCALIPSIS Z",
+  "subtitle": "Episodio 1 · La primera alerta",
+  "kind": "zombie-episode-1",
+  "seconds": 40,
+  "prompt": "Escribe exactamente cinco momentos de un primer episodio apocalíptico zombie: protagonista solo en su casa durante una tarde lluviosa; alerta urgente en la TV; infectados en la calle; golpes violentos en la puerta; mochila para decidir. Tono tenso, narrativo, español venezolano neutro, sin spoilers. Termina con A: atrincherarse y B: escapar.",
+  "background": "#0b1720",
+  "accent": "#71ebd1",
+  "use_claude": true,
+  "scenes": [
+    {
+      "heading": "CASA",
+      "caption": "Era una tarde de lluvia. Estaba solo, como siempre."
+    },
+    {
+      "heading": "ALERTA",
+      "caption": "La señal cambió: «No salgan. No abran la puerta»."
+    },
+    {
+      "heading": "LA CALLE",
+      "caption": "Vi gente corriendo... y otros persiguiéndolos."
+    },
+    {
+      "heading": "LA PUERTA",
+      "caption": "Escuché golpes. Tres, fuertes, justo a mi lado."
+    },
+    {
+      "heading": "UNA DECISIÓN",
+      "caption": "Agarré agua, mi linterna y una mochila."
+    }
+  ]
+}
