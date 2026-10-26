@@ -71,7 +71,7 @@ jobs:
           cd "$RUNNER_TEMP/remotion-smoke"
           npm init -y >/dev/null
           npm install --no-audit --no-fund remotion @remotion/cli react react-dom
-          ./node_modules/.bin/remotion --version
+          ./node_modules/.bin/remotion versions
           echo "PASS: Remotion framework and CLI available in cloud runner."
 
       - name: State deployment boundary
