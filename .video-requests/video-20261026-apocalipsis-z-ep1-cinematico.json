@@ -1,0 +1,32 @@
+{
+  "title": "APOCALIPSIS Z",
+  "subtitle": "Episodio 1 · La primera alerta",
+  "kind": "zombie-episode-1",
+  "seconds": 40,
+  "prompt": "Cinco momentos: una tarde lluviosa y tranquila dentro de casa; aviso urgente de emergencia en TV; vecinos que se convierten en infectados afuera; golpes en la puerta; protagonista recoge mochila y decide. Cierre: A atrincherarse, B escapar. Suspenso, español claro.",
+  "background": "#0b1720",
+  "accent": "#71ebd1",
+  "use_claude": true,
+  "scenes": [
+    {
+      "heading": "CASA",
+      "caption": "Una tarde gris. No imaginaba lo que venía."
+    },
+    {
+      "heading": "ALERTA",
+      "caption": "La televisión dijo: ¡No abran la puerta!"
+    },
+    {
+      "heading": "VENTANA",
+      "caption": "En la calle todos corrían... excepto algunos."
+    },
+    {
+      "heading": "INFECTADOS",
+      "caption": "Vi a mis vecinos con la mirada perdida."
+    },
+    {
+      "heading": "TRES GOLPES",
+      "caption": "La puerta tembló. Solo tenía segundos."
+    }
+  ]
+}
