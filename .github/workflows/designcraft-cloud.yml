@@ -21,8 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 16
     permissions:
-      contents: read
-      issues: write
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -156,3 +155,36 @@ jobs:
           retention-days: 3
           if-no-files-found: warn
 
+
+      - name: Publish safe job status to dedicated request branch
+        if: always() && github.ref == 'refs/heads/designcraft-requests'
+        shell: bash
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          RESULT_STATUS: '${{ job.status }}'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,json,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          doc=root/'docs'
+          files=[{'name':p.name,'bytes':p.stat().st_size} for p in doc.iterdir() if p.is_file()] if doc.exists() else []
+          s={'status':os.getenv('RESULT_STATUS'),'run_id':os.getenv('GITHUB_RUN_ID'),
+             'commit':os.getenv('GITHUB_SHA'),'mcp_handshake':(doc/'mcp-test.json').exists(),
+             'files':files}
+          (root/'designcraft-status.json').write_text(json.dumps(s,indent=2))
+          print('Status to publish:',json.dumps(s))
+          PY
+          LOCATION="repos/$GITHUB_REPOSITORY/contents/.designcraft-output/status.json"
+          CONTENT="$(base64 -w0 "$RUNNER_TEMP/designcraft-status.json")"
+          OLD_SHA="$(gh api "$LOCATION" -f ref=designcraft-requests --jq '.sha' 2>/dev/null || true)"
+          if [[ -n "$OLD_SHA" ]]; then
+            gh api -X PUT "$LOCATION" -f branch=designcraft-requests \
+              -f message='ci(designcraft): record verified cloud run result' \
+              -f content="$CONTENT" -f sha="$OLD_SHA" >/dev/null
+          else
+            gh api -X PUT "$LOCATION" -f branch=designcraft-requests \
+              -f message='ci(designcraft): record verified cloud run result' \
+              -f content="$CONTENT" >/dev/null
+          fi
+          echo "DesignCraft report saved to .designcraft-output/status.json"
