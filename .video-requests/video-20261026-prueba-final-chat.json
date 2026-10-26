@@ -1,0 +1,23 @@
+{
+  "title": "VIDEO DESDE CHATGPT",
+  "subtitle": "Claude Code + Remotion sin PC",
+  "seconds": 5,
+  "prompt": "Tres escenas cinematográficas con motion graphics: IDEA, ANIMACIÓN y VIDEO LISTO. Español neutro, breve y entusiasta.",
+  "background": "#081024",
+  "accent": "#60e6d0",
+  "use_claude": true,
+  "scenes": [
+    {
+      "heading": "UNA IDEA",
+      "caption": "Escríbela en el chat"
+    },
+    {
+      "heading": "MOVIMIENTO",
+      "caption": "Remotion anima los cuadros"
+    },
+    {
+      "heading": "TU VIDEO MP4",
+      "caption": "Descárgalo desde GitHub"
+    }
+  ]
+}
