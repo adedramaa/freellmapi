@@ -1,0 +1,14 @@
+{
+  "name": "@adedramaa/remotion-cloud-render",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "render": "remotion render src/index.tsx CloudVideo"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.538",
+    "remotion": "4.0.538",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  }
+}
