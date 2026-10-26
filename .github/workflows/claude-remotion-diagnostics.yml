@@ -26,7 +26,7 @@ jobs:
       ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
       ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.FREELLMAPI_API_KEY }}
-      ANTHROPIC_MODEL: openai/gpt-oss-20b
+      ANTHROPIC_MODEL: auto
     steps:
       - name: Checkout candidate revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -70,25 +70,14 @@ jobs:
                   print("GATEWAY: http=",e.code,"error_type=",str(typ)[:50],"error_code=",str(code)[:50])
               except Exception as e:
                   print("GATEWAY: transport_failure=",type(e).__name__)
-              if attempt<2: time.sleep(12)
+              if attempt<2 and getattr(e,"code",0)!=429: time.sleep(12)
+              else: break
           sys.exit(4)
           PY
       - name: Install real Claude Code
         run: npm install --global @anthropic-ai/claude-code@2.1.296
       - name: Install official Remotion skill plugin
         uses: ./.github/actions/setup-remotion
-      - name: Probe native Remotion Skill tool (diagnostic only, gateway may reject 413)
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "CLAUDE_CONFIG=project plugin; bare=false; skill execution enabled"
-          timeout 160 claude -p             "Use the Skill tool to load remotion:remotion-best-practices before answering. Give 2 brief Spanish recommendations for a 9:16 zombie reel using Remotion. Do not edit files."             --model "$ANTHROPIC_MODEL"             --max-turns 5             --tools "Skill,Read" --allowedTools Skill Read             --permission-mode dontAsk             --strict-mcp-config --no-session-persistence             --output-format stream-json --verbose             > "$RUNNER_TEMP/claude-remotion-stream.jsonl"             2> "$RUNNER_TEMP/claude-remotion-stderr.log" || {
-              python3 .github/agent/claude_remotion_audit.py status "$RUNNER_TEMP/claude-remotion-stderr.log"
-              python3 .github/agent/claude_remotion_audit.py status-stream "$RUNNER_TEMP/claude-remotion-stream.jsonl"
-              exit 1
-            }
-          python3 .github/agent/claude_remotion_audit.py assert "$RUNNER_TEMP/claude-remotion-stream.jsonl"
       - name: Verify official Remotion Skills with actual Claude Code reduced-context execution
         shell: bash
         run: |
