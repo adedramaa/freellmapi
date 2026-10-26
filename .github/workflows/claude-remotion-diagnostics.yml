@@ -23,6 +23,7 @@ jobs:
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
       ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
       ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.FREELLMAPI_API_KEY }}
       ANTHROPIC_MODEL: openai/gpt-oss-20b
     steps:
       - name: Checkout candidate revision
