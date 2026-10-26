@@ -1,0 +1,100 @@
+name: Verify Claude Code Remotion Skill and FreeLLMAPI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/claude-remotion-diagnostics.yml'
+      - '.github/workflows/remotion-cloud-video.yml'
+      - '.github/agent/claude_remotion_audit.py'
+      - '.github/agent/test_claude_remotion_audit.py'
+
+permissions:
+  contents: read
+
+jobs:
+  gateway-skill-check:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      DISABLE_TELEMETRY: '1'
+      DISABLE_AUTOUPDATER: '1'
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+      CLAUDE_CODE_SIMPLE: '1'
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: '512'
+      ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+      ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.FREELLMAPI_API_KEY }}
+      ANTHROPIC_MODEL: auto
+    steps:
+      - name: Checkout candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Audit unit tests
+        run: python3 -m unittest discover -s .github/agent -p 'test_claude_remotion_audit.py' -v
+      - name: Probe FreeLLMAPI messages compatibility, without leaking keys
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error, time, sys
+          token=os.environ.get("ANTHROPIC_AUTH_TOKEN","")
+          if not token:
+              print("FAIL: FREELLMAPI_API_KEY secret is missing")
+              sys.exit(2)
+          endpoint=os.environ["ANTHROPIC_BASE_URL"].rstrip("/")+"/v1/messages"
+          data=json.dumps({"model":os.environ["ANTHROPIC_MODEL"],"max_tokens":48,
+                           "messages":[{"role":"user","content":"Respond with one word: OK"}]}).encode()
+          for attempt in range(3):
+              req=urllib.request.Request(endpoint,data=data,headers={"x-api-key":token,
+                  "anthropic-version":"2023-06-01","content-type":"application/json"})
+              try:
+                  with urllib.request.urlopen(req,timeout=40) as res:
+                      body=json.loads(res.read(16384))
+                      shape=body.get("type")
+                      blocks=body.get("content",[])
+                      good=res.status==200 and shape=="message" and isinstance(blocks,list) and len(blocks)>0
+                      print("GATEWAY: http=",res.status,"type=",shape,"contentBlocks=",len(blocks), "ok=",good)
+                      sys.exit(0 if good else 3)
+              except urllib.error.HTTPError as e:
+                  payload=e.read(4096)
+                  try:
+                      parsed=json.loads(payload)
+                      typ=parsed.get("error",{}).get("type","unknown")
+                      code=parsed.get("error",{}).get("code","")
+                  except Exception:
+                      typ="non_json";code=""
+                  print("GATEWAY: http=",e.code,"error_type=",str(typ)[:50],"error_code=",str(code)[:50])
+                  if e.code == 429:
+                      sys.exit(5)
+              except Exception as e:
+                  print("GATEWAY: transport_failure=",type(e).__name__)
+              if attempt<2: time.sleep(12)
+          sys.exit(4)
+          PY
+      - name: Install real Claude Code
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Install official Remotion skill plugin
+        uses: ./.github/actions/setup-remotion
+      - name: Verify official Remotion Skills with actual Claude Code reduced-context execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Return ONLY a JSON array of exactly 5 objects. Each object must have heading and caption string fields. First scene is a zombie alert in a house. Short Spanish wording. Do not use markdown.' > "$RUNNER_TEMP/brief.txt"
+          python3 .github/agent/remotion_skill_prompt.py "$RUNNER_TEMP/brief.txt" "$RUNNER_TEMP/skill-prompt.txt"
+          timeout 120 claude --bare -p "$(cat "$RUNNER_TEMP/skill-prompt.txt")" \
+            --model "$ANTHROPIC_MODEL" --max-turns 1 --tools "" \
+            --strict-mcp-config --disable-slash-commands --no-session-persistence \
+            --system-prompt "Return exactly 5 scenes as valid JSON. No markdown." \
+            --output-format text > "$RUNNER_TEMP/skill-scenes.txt"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data=json.loads((Path(os.environ["RUNNER_TEMP"])/"skill-scenes.txt").read_text(encoding="utf-8"))
+          assert isinstance(data,list) and len(data)==5
+          assert all(isinstance(x,dict) and set(x)=={"heading","caption"} for x in data)
+          print("PASS: Actual Claude Code responded with valid scenes after consuming installed official Remotion Skills.")
+          PY
