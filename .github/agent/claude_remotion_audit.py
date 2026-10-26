@@ -73,6 +73,26 @@ def main():
         terms = ("invalid", "unknown", "error", "fail", "login", "auth", "permission", "model", "token", "plugin", "skill", "url", "config", "setting", "prompt", "system", "tool")
         print("ERROR_KEYWORDS:", [w for w in terms if w in sample])
         sys.exit(0)
+    if mode == "status-stream":
+        records = []
+        for line in data.splitlines():
+            try:
+                o = json.loads(line)
+            except ValueError:
+                continue
+            rec = {"event": o.get("type"), "subtype": o.get("subtype")}
+            if o.get("type") == "result":
+                rec.update({"is_error": o.get("is_error"), "num_turns": o.get("num_turns"), "result_kind": summarize_status(str(o.get("result", "")))})
+            if o.get("type") == "assistant":
+                msg = o.get("message") or {}
+                if isinstance(msg, dict):
+                    rec["stop_reason"] = msg.get("stop_reason")
+                    rec["blocks"] = [x.get("name", x.get("type")) for x in msg.get("content", []) if isinstance(x, dict)]
+            if o.get("type") == "system":
+                rec["tools_have_skill"] = "Skill" in o.get("tools", [])
+            records.append(rec)
+        print("STREAM_STATUS:", records[-7:])
+        sys.exit(0)
     if mode != "assert":
         raise ValueError("Unknown command")
     result = proof(data)
