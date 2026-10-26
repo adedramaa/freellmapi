@@ -63,6 +63,25 @@ class VideoRequestTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 apply_claude('[{"heading":"ONE","caption":"Not enough scenes"}]', dest)
 
+    def test_model_can_add_commentary_after_json_without_being_falsely_credited(self):
+        from remotion_video_request import parse_claude_scene_text
+        source = '\`\`\`json\\n[{"heading":"CASA","caption":"Lluvia"},{"heading":"TV","caption":"Alerta"},{"heading":"VENTANA","caption":"Zombie"}]\\n\`\`\`\\nExplicación'
+        scenes = parse_claude_scene_text(source)
+        self.assertEqual(len(scenes), 3)
+
+    def test_partial_model_storyboard_reuses_only_owner_approved_remainder(self):
+        original = {**self.spec, "kind":"zombie-episode-1","seconds":40,
+                    "scenes":[{"heading":f"BASE {i}","caption":"original"} for i in range(5)]}
+        with tempfile.TemporaryDirectory() as directory:
+            dest=Path(directory)
+            write_files(validate_spec(original),dest)
+            scenes=[{"heading":f"CLAUDE {i}","caption":"modelo"} for i in range(3)]
+            apply_claude(json.dumps(scenes,ensure_ascii=False)+"\\nLa historia sigue.",dest)
+            saved=json.loads((dest/"props.json").read_text())
+            self.assertEqual(len(saved["scenes"]),5)
+            self.assertEqual(saved["scenes"][2]["heading"],"CLAUDE 2")
+            self.assertEqual(saved["scenes"][3]["heading"],"BASE 3")
+
     def test_write_and_reject_bad_claude(self):
         with tempfile.TemporaryDirectory() as directory:
             dest = Path(directory)
