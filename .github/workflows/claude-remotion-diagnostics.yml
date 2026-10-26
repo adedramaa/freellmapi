@@ -82,6 +82,7 @@ jobs:
           echo "CLAUDE_CONFIG=project plugin; bare=false; skill execution enabled"
           timeout 160 claude -p             "Use the Skill tool to load remotion:remotion-best-practices before answering. Give 2 brief Spanish recommendations for a 9:16 zombie reel using Remotion. Do not edit files."             --model "$ANTHROPIC_MODEL"             --max-turns 5             --tools "Skill,Read" --allowedTools Skill Read             --permission-mode dontAsk             --strict-mcp-config --no-session-persistence             --output-format stream-json --verbose             > "$RUNNER_TEMP/claude-remotion-stream.jsonl"             2> "$RUNNER_TEMP/claude-remotion-stderr.log" || {
               python3 .github/agent/claude_remotion_audit.py status "$RUNNER_TEMP/claude-remotion-stderr.log"
+              python3 .github/agent/claude_remotion_audit.py status-stream "$RUNNER_TEMP/claude-remotion-stream.jsonl"
               exit 1
             }
           python3 .github/agent/claude_remotion_audit.py assert "$RUNNER_TEMP/claude-remotion-stream.jsonl"
