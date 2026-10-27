@@ -2,7 +2,7 @@
 <html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Autónoma Dev — Desarrollo web y automatizaciones para negocios</title>
 <meta name="description" content="Autónoma Dev desarrolla páginas web, catálogos con panel y automatizaciones para negocios. Explora demos interactivas y solicita una propuesta sin compromiso.">
-<meta name="theme-color" content="#f5f7f1">
+<meta name="theme-color" content="#f5f7f1"><link rel="icon" type="image/svg+xml" href="/assets/logo-autonoma.svg">
 <meta property="og:type" content="website"><meta property="og:title" content="Autónoma Dev | Menos tareas, más negocio"><meta property="og:description" content="Software útil para negocios reales, con presupuesto y alcance claros.">
 <link rel="canonical" href="https://autonoma-dev-agencia-v2.onrender.com/"><link rel="alternate" hreflang="es-AR" href="https://autonoma-dev-agencia-v2.onrender.com/"><link rel="alternate" hreflang="en" href="https://autonoma-dev-agencia-v2.onrender.com/en/"><meta property="og:url" content="https://autonoma-dev-agencia-v2.onrender.com/">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -120,7 +120,7 @@ btn.disabled=true;btn.textContent='Registrando consulta…';
 try{const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),18000);let r;
 try{r=await fetch(api+'/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:controller.signal});}finally{clearTimeout(timeout);}
 const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw Error(String(j.error||'error'));
-status.classList.add('ok');status.textContent='¡Consulta recibida! Referencia: '+j.reference+'. Guarda este número.';form.reset();}
+status.classList.add('ok');status.textContent='¡Consulta recibida! Referencia: '+j.reference+'. Guarda este número.';form.reset();switchCurrency();}
 catch{status.classList.add('fail');status.textContent='No pudimos registrar tu consulta. Revisa tu conexión e inténtalo de nuevo. Si ya la enviaste, espera 15 minutos antes de reintentar.';}
 finally{btn.disabled=false;btn.textContent='Enviar mi proyecto ↗';}
 });
