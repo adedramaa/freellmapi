@@ -55,3 +55,13 @@ Las pruebas usan un servidor MCP simulado; **no prueban el ejecutable real**.
 6. Configurar un plugin MCP personalizado en ChatGPT **solo si** tu plan permite acciones de escritura mediante MCP y admite la autenticación del gateway.
 
 **Limitación de infraestructura:** Railway conectado no puede crear nuevos recursos actualmente: su prueba gratuita expiró. No convertirlo a un plan de pago sin autorización.
+
+## Estado verificado 28/10/2026
+- El usuario autorizó exclusivamente un servicio **Render Free** en «Bro's workspace», pero los controles de seguridad de la herramienta bloquearon su creación. **El servicio aún no existe** y los otros servicios no se modificaron.
+- Los tests locales del gateway con MCP simulado pasaron **3/3**.
+- Se publicaron `tests/test_gateway.py`, `tests/smoke_real_cli.py` y `.github/workflows/designcraft-smoke.yml`. **La ejecución real del CLI en GitHub Actions todavía no está confirmada**.
+- La documentación actual de OpenAI reserva las conexiones MCP personalizadas de ChatGPT para Business y Enterprise/Edu. No se ha comprobado compatibilidad con ChatGPT Plus.
+- No publicar credenciales. Generar `MCP_BEARER_TOKEN` en el alojamiento y mantener la autenticación obligatoria.
+
+### Configuración de despliegue manual (solo si Render permite Free)
+Repositorio: `adedramaa/freellmapi`; rama: `designcraft-mcp-prototype`; nombre: `designcraft-autonomo-mcp`; Runtime: Docker; contexto: `designcraft-autonomo`; Dockerfile: `designcraft-autonomo/Dockerfile`; Auto Deploy: Off; plan: **Free**. Variables privadas: `MCP_BEARER_TOKEN` (aleatorio >=24 caracteres), `WORKSPACE_DIR=/workspace`, `DESIGNCRAFT_CLI=/usr/bin/designcraft-cli`, `MCP_TOOL_TIMEOUT=180`. Verificar `/healthz` y operaciones MCP autenticadas antes de procesar trabajos reales.
