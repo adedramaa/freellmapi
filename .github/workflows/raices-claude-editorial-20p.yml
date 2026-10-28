@@ -52,7 +52,7 @@ jobs:
           set -euo pipefail
           test -n "$ANTHROPIC_AUTH_TOKEN"
           timeout 155 claude --bare \
-            -p "Read theme.json and ../.claude/skills/catalogo-editorial-raices/SKILL.md. Then use Edit on theme.json to improve editorial palette, cover_title, and design_note for the luxury Raices PDF. Preserve valid JSON and all keys. NO prices, no generic grids or web-card styling. Only edit theme.json. Answer briefly." \
+            -p "First use Read on theme.json. Then use Edit to replace the exact text OBJETOS CON CARÁCTER with EL ARTE DE ELEGIR in theme.json, preserving all other JSON keys and values. Do not only describe the edit: actually call the Edit tool. No other modifications. Reply DONE." \
             --model "$ANTHROPIC_MODEL" --max-turns 6 \
             --tools "Read,Edit" --allowedTools Read Edit \
             --permission-mode dontAsk --strict-mcp-config \
