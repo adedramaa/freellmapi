@@ -1,0 +1,46 @@
+name: DesignCraft MCP — prueba real
+on:
+  push:
+    branches: [designcraft-mcp-prototype]
+    paths:
+      - ".github/workflows/designcraft-mcp-smoke.yml"
+      - "designcraft-autonomo/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installar CLI oficial DesignCraft 0.14.0
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/storytold/designcraft/releases/download/v0.14.0/designcraft-0.14.0-linux-x86_64.deb" \
+            -o /tmp/designcraft.deb
+          sudo dpkg -i /tmp/designcraft.deb || (sudo apt-get update && sudo apt-get install -f -y)
+          command -v designcraft-cli
+          designcraft-cli --help
+      - name: Prueba de maquetación y exportación real
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          designcraft-cli run --sample --export artifacts/catalogo-prueba.pdf --export artifacts/catalogo-prueba.png --export artifacts/catalogo-prueba.designcraft
+          test -s artifacts/catalogo-prueba.pdf
+          test -s artifacts/catalogo-prueba.png
+          test -s artifacts/catalogo-prueba.designcraft
+          file artifacts/*
+      - name: Probar gateway de forma simulada
+        run: |
+          python -m pip install --user -r designcraft-autonomo/requirements.txt pytest httpx
+          python -m py_compile designcraft-autonomo/server.py
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: designcraft-prueba-real
+          path: artifacts/
+          retention-days: 1
