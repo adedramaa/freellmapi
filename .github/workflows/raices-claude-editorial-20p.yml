@@ -1,0 +1,115 @@
+name: Raices - Claude Code Catalogo Editorial 20P
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/raices-claude-editorial-20p.yml'
+      - 'raices-editorial-20p/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: raices-claude-catalogo-editorial
+  cancel-in-progress: false
+jobs:
+  build-editorial:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      DISABLE_TELEMETRY: '1'
+      DISABLE_AUTOUPDATER: '1'
+      CLAUDE_CODE_SIMPLE: '1'
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+    steps:
+      - name: Checkout isolated public project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate source and skill
+        run: |
+          set -euo pipefail
+          test -s .claude/skills/catalogo-editorial-raices/SKILL.md
+          python3 -m py_compile raices-editorial-20p/build.py
+          python3 -m json.tool raices-editorial-20p/theme.json >/dev/null
+      - name: Install official Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Confirm CLI installation
+        run: claude --version
+      - name: Real Claude Code art direction using free gateway
+        id: claude
+        continue-on-error: true
+        working-directory: raices-editorial-20p
+        shell: bash
+        env:
+          ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.FREELLMAPI_API_KEY }}
+          ANTHROPIC_MODEL: openai/gpt-oss-20b
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '512'
+        run: |
+          set -euo pipefail
+          test -n "$ANTHROPIC_AUTH_TOKEN"
+          timeout 155 claude --bare \
+            -p "Read theme.json and ../.claude/skills/catalogo-editorial-raices/SKILL.md. Then use Edit on theme.json to improve editorial palette, cover_title, and design_note for the luxury Raices PDF. Preserve valid JSON and all keys. NO prices, no generic grids or web-card styling. Only edit theme.json. Answer briefly." \
+            --model "$ANTHROPIC_MODEL" --max-turns 6 \
+            --tools "Read,Edit" --allowedTools Read Edit \
+            --permission-mode dontAsk --strict-mcp-config \
+            --disable-slash-commands --no-session-persistence \
+            --system-prompt "You are an editorial art director. Use Read and Edit, limited to theme.json. Source photos and SKUs are real and preverified by the builder. Do not invent products." \
+            --output-format stream-json --verbose \
+            > "$RUNNER_TEMP/raices-claude.jsonl" \
+            2> "$RUNNER_TEMP/raices-claude-stderr.log"
+          python3 -m json.tool theme.json >/dev/null
+      - name: Verify Claude tool trace and protect other source files
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'raices-claude.jsonl'
+          names=[]
+          if p.exists():
+              for line in p.read_text(errors='replace').splitlines():
+                  try:e=json.loads(line)
+                  except ValueError:continue
+                  if e.get('type')=='assistant':
+                      for item in e.get('message',{}).get('content',[]):
+                          if item.get('type')=='tool_use':names.append(item.get('name'))
+          paths=subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()
+          safe=all(x=='raices-editorial-20p/theme.json' for x in paths)
+          evidence={'real_read_edit':bool('Read' in names and 'Edit' in names and paths and safe),'tools':names,'changed_files':paths,'safe_diff':safe}
+          (Path(os.environ['RUNNER_TEMP'])/'claude-evidence.json').write_text(json.dumps(evidence,indent=2))
+          print(json.dumps(evidence))
+          if not safe:raise SystemExit('Out-of-scope Claude edit; refusing publication')
+          PY
+      - name: Install free PDF libraries
+        run: python3 -m pip install --quiet requests pillow reportlab pymupdf
+      - name: Render 20 pages with verified source photos and product SKUs
+        run: python3 raices-editorial-20p/build.py
+      - name: Final automated validation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import fitz,json
+          p=Path('raices-editorial-20p/output')
+          d=fitz.open(p/'RAICES_SELECCION_EDITORIAL_20P_SIN_PRECIOS.pdf')
+          assert len(d)==20
+          j=json.loads((p/'MANIFIESTO_SKU_FOTO.json').read_text())
+          assert len(j['pages'])==20
+          for index,products in enumerate(j['pages']):
+              text=d[index].get_text().upper()
+              for product in products:assert product['sku'].upper() in text
+          print('20 pages and SKU verification PASS')
+          PY
+          cp "$RUNNER_TEMP/claude-evidence.json" raices-editorial-20p/output/CLAUDE_EVIDENCIA.json
+      - name: Save editorial candidate as GitHub artifact for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: raices-catalogo-editorial-20p-${{ github.run_id }}
+          path: raices-editorial-20p/output/
+          retention-days: 7
+          if-no-files-found: error
