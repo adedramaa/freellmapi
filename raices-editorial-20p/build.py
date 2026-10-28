@@ -145,6 +145,7 @@ def drawing(c,items,n,group):
         txt(c,40,H-75,'RAÍCES',31,'Serif',PAPER)
         txt(c,40,H-137,'EDICIÓN',13,'Bold',CREAM)
         cover_words=THEME.get('cover_title','EL ARTE DE ELEGIR').split()
+        if len(cover_words)>3:cover_words=[' '.join(cover_words[:2]),cover_words[2],' '.join(cover_words[3:])]
         cover_words=(cover_words+['',''])[:3]
         for i,word in enumerate(cover_words):txt(c,40,H-204-i*45,word,33,'Serif',PAPER)
         box(c,40,H-319,66,3,COPPER)
