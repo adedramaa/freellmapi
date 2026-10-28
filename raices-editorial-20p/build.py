@@ -88,8 +88,9 @@ def fetch_photo(p):
         print('photo_error',p['sku'],str(e)[:90],flush=True)
         return None
 
-def take(rows,group,n,taken):
+def take(rows,group,n,taken,prefer=None):
     pool=[x for x in rows if x['group']==group and x['sku'] not in taken]
+    if prefer:pool.sort(key=lambda x: (not (x['sku'].startswith(prefer) or prefer.lower() in x['name'].lower()),-x['score']))
     pool+= [x for x in rows if x['sku'] not in taken and x not in pool]
     selected=[]
     for p in pool:
@@ -143,9 +144,9 @@ def drawing(c,items,n,group):
         image_contain(c,items[0]['local'],350,140,W-350,550,5)
         txt(c,40,H-75,'RAÍCES',31,'Serif',PAPER)
         txt(c,40,H-137,'EDICIÓN',13,'Bold',CREAM)
-        txt(c,40,H-204,'OBJETOS',35,'Serif',PAPER)
-        txt(c,40,H-249,'CON',35,'Serif',PAPER)
-        txt(c,40,H-294,'CARÁCTER',33,'Serif',PAPER)
+        cover_words=THEME.get('cover_title','EL ARTE DE ELEGIR').split()
+        cover_words=(cover_words+['',''])[:3]
+        for i,word in enumerate(cover_words):txt(c,40,H-204-i*45,word,33,'Serif',PAPER)
         box(c,40,H-319,66,3,COPPER)
         txt(c,40,H-366,'Regalos, mate y asado',12,'Sans',CREAM)
         txt(c,40,H-386,'Una selección para elegir.',11,'Sans',CREAM)
@@ -170,11 +171,12 @@ def drawing(c,items,n,group):
         label(c,items[0],40,292,320,17,10,True)
         label(c,items[1],399,322,155,16,9,True)
         footer(c,n,group,True);c.showPage();return
-    common(c,n,group)
+    dark=(n%6==3)
+    common(c,n,group,FOREST if dark else PAPER)
     labels={'cuero':'EL DETALLE IMPORTA','mate':'EL RITUAL COTIDIANO','asado':'HECHOS PARA COMPARTIR','regalos':'UNA IDEA PARA REGALAR'}
-    txt(c,40,H-95,labels.get(group,'OBJETOS ELEGIDOS'),25,'Serif',INK)
-    txt(c,40,H-119,'UNA SELECCIÓN DE RAÍCES REGALOS',9,'Bold',COPPER)
-    mode=n%3
+    txt(c,40,H-95,labels.get(group,'OBJETOS ELEGIDOS'),25,'Serif',PAPER if dark else INK)
+    txt(c,40,H-119,'UNA SELECCIÓN DE RAÍCES REGALOS',9,'Bold',CREAM if dark else COPPER)
+    mode=n%6
     if mode==0:
         # Large left image + two smaller portraits at right.
         material(c,items[0]['local'],40,190,319,479)
@@ -190,13 +192,37 @@ def drawing(c,items,n,group):
         label(c,items[0],42,333,510,19,11)
         label(c,items[1],42,104,211,16,9)
         label(c,items[2],290,104,265,16,9)
-    else:
+    elif mode==2:
         material(c,items[0]['local'],40,224,250,449)
         material(c,items[1]['local'],315,366,240,307)
         material(c,items[2]['local'],315,225,240,110)
         label(c,items[0],42,194,247,18,11)
         label(c,items[1],315,337,237,16,9)
         label(c,items[2],315,196,238,16,9)
+    elif mode==3:
+        # Full dark editorial with offset images, asymmetrical composition.
+        material(c,items[0]['local'],205,225,350,448)
+        material(c,items[1]['local'],40,451,138,221)
+        material(c,items[2]['local'],40,245,138,153)
+        label(c,items[0],205,194,345,19,11,True)
+        label(c,items[1],40,424,152,16,9,True)
+        label(c,items[2],40,220,152,16,9,True)
+    elif mode==4:
+        # Paired oversized product imagery and a lower editorial strip.
+        material(c,items[0]['local'],40,368,340,305)
+        material(c,items[1]['local'],400,368,155,305)
+        material(c,items[2]['local'],170,127,385,170)
+        label(c,items[0],40,340,334,20,12)
+        label(c,items[1],400,342,153,16,9)
+        label(c,items[2],170,101,383,17,10)
+    else:
+        # Panoramic image + two bottom details; distinct from rigid grids.
+        material(c,items[0]['local'],40,263,515,410)
+        material(c,items[1]['local'],40,113,226,120)
+        material(c,items[2]['local'],291,113,264,120)
+        label(c,items[0],40,240,508,19,11)
+        label(c,items[1],40,93,221,16,9)
+        label(c,items[2],291,93,258,16,9)
     c.showPage()
 
 def main():
@@ -208,7 +234,10 @@ def main():
         if pageno==1:group='regalos';items=take(products,'cuero',1,taken)
         elif pageno==2:group='regalos';items=take(products,'cuero',2,taken)
         elif 3<=pageno<=5:group='cuero';items=take(products,'cuero',3,taken)
-        elif 6<=pageno<=9:group='mate';items=take(products,'mate',3,taken)
+        elif 6<=pageno<=9:
+            group='mate'
+            prefix={6:'MAT',7:'TER',8:'SET',9:'BOM'}[pageno]
+            items=take(products,'mate',3,taken,prefer=prefix)
         elif pageno==10:group='asado';items=take(products,'asado',2,taken)
         elif 11<=pageno<=15:group='asado';items=take(products,'asado',3,taken)
         elif 16<=pageno<=18:group='regalos';items=take(products,'regalos',3,taken)
