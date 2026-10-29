@@ -1,0 +1,71 @@
+# Solo lecturas de metadatos publicos. NO genera 3D, NO consume ZeroGPU,
+# NO sube imagenes, NO usa HF_TOKEN ni tarjeta ni servicios de pago.
+name: Agencia3D - Verificar API TRELLIS2 gratis
+on:
+  push:
+    branches: ['experimento/agencia3d-blender']
+    paths: ['.github/workflows/agencia3d-trellis2-probe.yml']
+permissions:
+  contents: read
+concurrency:
+  group: agencia3d-trellis-probe
+  cancel-in-progress: true
+jobs:
+  probe:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Consultar endpoints publicos SIN ejecutar GPU
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+          urls = {
+              'space_metadata': 'https://huggingface.co/api/spaces/microsoft/TRELLIS.2',
+              'gradio_config': 'https://microsoft-trellis-2.hf.space/config',
+              'gradio_api_info': 'https://microsoft-trellis-2.hf.space/gradio_api/info',
+          }
+          result={'zero_gpu_calls':0,'uploaded_personal_images':0,'queries':{}}
+          for name, url in urls.items():
+              record={}
+              try:
+                  with urlopen(Request(url, headers={'User-Agent':'Agencia3D-free-metadata-probe/1.0'}), timeout=15) as resp:
+                      record['http_status']=resp.status
+                      raw=resp.read(2_000_000)
+                      data=json.loads(raw.decode('utf-8'))
+                      if name=='space_metadata':
+                          record['runtime']=data.get('runtime',{}).get('stage') if isinstance(data.get('runtime'),dict) else str(data.get('runtime'))
+                          record['sdk']=data.get('sdk')
+                          record['card_gated']=data.get('gated',False)
+                      elif name=='gradio_config':
+                          record['version']=data.get('version')
+                          record['dependencies']=[{'api_name':d.get('api_name'),'targets':d.get('targets'),'show_api':d.get('show_api')} for d in data.get('dependencies',[])]
+                          record['component_types']=[{'id':c.get('id'),'type':c.get('type'),'label':(c.get('props') or {}).get('label')} for c in data.get('components',[]) if c.get('type') in ('image','state','file','model3d')]
+                      else:
+                          record['named_endpoints']=list((data.get('named_endpoints') or {}).keys())
+                          record['unnamed_endpoints']=len(data.get('unnamed_endpoints') or {})
+                  record['ok']=True
+              except HTTPError as e:
+                  record={'ok':False,'http_status':e.code,'error':'HTTP error'}
+              except Exception as e:
+                  record={'ok':False,'error':type(e).__name__+': '+str(e)[:120]}
+              result['queries'][name]=record
+              print(name, json.dumps(record, ensure_ascii=False)[:1600])
+          p=Path(os.environ['RUNNER_TEMP'])/'trellis_api_probe.json'
+          p.write_text(json.dumps(result,indent=2,ensure_ascii=False),encoding='utf-8')
+          if not result['queries']['space_metadata'].get('ok'):
+              raise SystemExit('Space metadata unavailable; no GPU calls were made')
+          print('METADATA_TEST_DONE: no GPU requested, no private assets uploaded')
+          PY
+      - name: Guardar resultado por 1 dia
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agencia3d-trellis-api-public-info
+          path: ${{ runner.temp }}/trellis_api_probe.json
+          retention-days: 1
+          if-no-files-found: warn
