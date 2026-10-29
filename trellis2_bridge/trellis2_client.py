@@ -2,11 +2,13 @@
 """Agencia 3D / cliente de Microsoft TRELLIS.2 por Gradio.
 --mode probe: solo metadatos (GPU 0)
 --mode generate: una sola generacion y una exportacion ZeroGPU gratuita.
-NO utiliza tokens, tarjeta, API de pago ni reintentos.
+Generación autenticada exclusivamente mediante HF_TOKEN de GitHub Environment.
+No usa tarjetas, proveedores de pago ni reintentos automáticos.
 """
 from __future__ import annotations
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -33,7 +35,7 @@ def probe():
             'inputs_generate':n,'inputs_extract':e,'gpu_calls':0}
 
 def local_path(result):
-    if isinstance(result,str):
+    if isinstance(result,(str,Path)):
         f=Path(result)
         return f if f.is_file() else None
     if isinstance(result,dict):
@@ -47,13 +49,29 @@ def local_path(result):
                 return p
     return None
 
-def generate(src:Path, out_dir:Path):
+def require_token():
+    """Falla ANTES de cualquier subida o GPU si no existe autenticación."""
+    token=os.getenv('HF_TOKEN','').strip()
+    if not token or not token.startswith('hf_'):
+        raise RuntimeError('AUTH_REQUIRED: falta HF_TOKEN; prohibido generar como anonimo')
+    return token
+
+def verify_account(token):
+    """Validación sin GPU ni impresión del token (no lo registra en logs)."""
+    from huggingface_hub import HfApi
+    who=HfApi().whoami(token=token)
+    name=who.get('name')
+    if not name:
+        raise RuntimeError('AUTH_INVALID: Hugging Face no devolvio usuario')
+    return {'status':'AUTH_OK','account':name,'gpu_calls':0}
+
+def generate(src:Path, out_dir:Path, token:str):
     if not src.is_file() or src.suffix.lower() not in ('.png','.jpg','.jpeg'):
         raise ValueError('El archivo local debe ser PNG/JPG')
     if src.stat().st_size>8*1024*1024:
         raise ValueError('Imagen mayor de 8 MB')
     from gradio_client import Client, handle_file
-    client=Client(SPACE,verbose=False)  # Anónimo: sin token, crédito ni cargos
+    client=Client(SPACE,token=token,verbose=False,analytics_enabled=False)  # Cuota de cuenta FREE; no se usan proveedores de pago.
     prep=client.predict(handle_file(str(src)),api_name='/preprocess_image')
     prep_path=local_path(prep)
     if prep_path is None:
@@ -74,7 +92,7 @@ def generate(src:Path, out_dir:Path):
 
 def main():
     p=argparse.ArgumentParser(description='Agencia3D TRELLIS.2 ZeroGPU: gratis y sin PC')
-    p.add_argument('--mode',choices=['probe','generate'],default='probe')
+    p.add_argument('--mode',choices=['probe','auth-check','generate'],default='probe')
     p.add_argument('--image',type=Path)
     p.add_argument('--out',type=Path,default=Path('output'))
     p.add_argument('--accept-free-quota',action='store_true')
@@ -82,12 +100,26 @@ def main():
     print(json.dumps(probe(),ensure_ascii=False))
     if a.mode=='probe':
         return
+    try:
+        token=require_token()
+        account=verify_account(token)
+        print(json.dumps(account,ensure_ascii=False))
+    except Exception as e:
+        print('AUTH_PREFLIGHT_FAILED: '+type(e).__name__,file=sys.stderr)
+        raise SystemExit(2)
+    if a.mode=='auth-check':
+        return
     if not a.accept_free_quota or a.image is None:
         raise SystemExit('Para generar se necesita --image y --accept-free-quota')
     try:
-        glb=generate(a.image,a.out)
+        glb=generate(a.image,a.out,token)
     except Exception as e:
-        print('TRELLIS2_NO_COMPLETADO: '+type(e).__name__+': '+str(e)[:400],file=sys.stderr)
+        # No emitir tokens, URLs firmadas, trazas HTTP o credenciales a GitHub publico.
+        message=str(e).lower()
+        if 'quota' in message or 'zerogpu' in message:
+            print('TRELLIS2_LIMIT: cuota gratuita insuficiente o no disponible',file=sys.stderr)
+        else:
+            print('TRELLIS2_FAILED: '+type(e).__name__,file=sys.stderr)
         raise SystemExit(1)
     print('TRELLIS2_GLB_OK',glb,glb.stat().st_size)
 if __name__=='__main__':
