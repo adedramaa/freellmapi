@@ -118,7 +118,7 @@ def render(path):
     scene = bpy.context.scene
     scene.render.engine = 'BLENDER_WORKBENCH'
     scene.display.shading.light = 'STUDIO'
-    scene.display.shading.color_type = 'MATERIAL'
+    scene.display.shading.color_type = 'TEXTURE' if scene.get('agencia3d_imported') else 'MATERIAL'
     scene.display.shading.show_shadows = True
     scene.render.resolution_x = 640
     scene.render.resolution_y = 640
@@ -139,6 +139,7 @@ def main():
     bpy.context.scene.unit_settings.system = 'METRIC'
     bpy.context.scene.unit_settings.scale_length = 0.001
     bpy.context.scene.unit_settings.length_unit = 'MILLIMETERS'
+    bpy.context.scene['agencia3d_imported'] = bool(a.input)
     if a.input:
         import_glb(a.input)
         measures = normalize_imported(a.height_mm)
