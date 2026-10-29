@@ -26,6 +26,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Probar seguridad del cliente sin red ni GPU
+        run: python3 -m unittest discover -s trellis2_bridge -p 'test_*.py' -v
       - name: Comprobar que el secreto se configuró
         id: guard
         shell: bash
