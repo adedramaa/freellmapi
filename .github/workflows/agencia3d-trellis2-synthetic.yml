@@ -1,0 +1,64 @@
+# Prueba puntual de inferencia ZERO GPU gratis, sin tokens ni tarjeta.
+# Usa una imagen sintética; no publica ilustraciones del usuario.
+# Sólo se dispara cuando se añade o modifica ESTE workflow en rama aislada.
+name: Agencia3D - TRELLIS2 generar 3D (ZeroGPU anónimo)
+on:
+  push:
+    branches: ['experimento/agencia3d-blender']
+    paths: ['.github/workflows/agencia3d-trellis2-synthetic.yml']
+permissions:
+  contents: read
+concurrency:
+  group: agencia3d-trellis2-free-once
+  cancel-in-progress: false
+jobs:
+  test-free:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - name: Checkout experimental sin credenciales
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Instalar cliente y creador de imagen de prueba
+        run: python3 -m pip install --disable-pip-version-check --quiet --no-input --user 'gradio_client>=1.10,<3' 'Pillow>=10,<13'
+      - name: Crear dibujo sintético con fondo transparente (NO imagen privada)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from PIL import Image, ImageDraw
+          im=Image.new('RGBA',(384,384),(0,0,0,0))
+          d=ImageDraw.Draw(im)
+          d.ellipse((92,145,300,342),fill='#d1a26c',outline='#543521',width=7)
+          d.ellipse((115,55,273,230),fill='#e9be87',outline='#543521',width=7)
+          d.ellipse((105,83,154,196),fill='#c79662',outline='#543521',width=7)
+          d.ellipse((246,83,296,192),fill='#c79662',outline='#543521',width=7)
+          d.ellipse((148,127,165,145),fill='#21180f')
+          d.ellipse((229,127,246,145),fill='#21180f')
+          d.ellipse((176,154,220,186),fill='#493026')
+          im.save('trellis2_synthetic_input.png')
+          PY
+      - name: Intentar UNA generación y UNA exportación con cuota anónima gratis
+        shell: bash
+        run: |
+          python3 trellis2_bridge/trellis2_client.py --mode generate --image trellis2_synthetic_input.png --out "$RUNNER_TEMP/trellis-resultado" --accept-free-quota
+      - name: Verificar GLB real
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          p=Path(os.environ['RUNNER_TEMP'])/'trellis-resultado'/'trellis2_resultado.glb'
+          with p.open('rb') as f: assert f.read(4)==b'glTF'
+          assert p.stat().st_size>100
+          print('TRELLIS2_GENERACION_REAL_OK',p.stat().st_size)
+          PY
+      - name: Archivar solo el resultado sintético
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agencia3d-trellis2-generacion-sintetica
+          path: ${{ runner.temp }}/trellis-resultado/
+          retention-days: 1
+          if-no-files-found: error
