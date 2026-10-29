@@ -1,30 +1,50 @@
-# Prueba puntual de inferencia ZERO GPU gratis, sin tokens ni tarjeta.
-# Usa una imagen sintética; no publica ilustraciones del usuario.
-# Sólo se dispara cuando se añade o modifica ESTE workflow en rama aislada.
-name: Agencia3D - TRELLIS2 generar 3D (ZeroGPU anónimo)
+# Generación OPCIONAL: solo con petición explícita y token de entorno.
+# Nunca se activa por commits normales, ni sube material personal.
+# Una única generación + extracción; SIN reintentos ni servicios pagos.
+name: Agencia3D - TRELLIS2 gratuito autenticado (prueba)
 on:
   push:
-    branches: ['experimento/agencia3d-blender']
-    paths: ['.github/workflows/agencia3d-trellis2-synthetic.yml']
+    branches:
+      - experimento/agencia3d-blender
+    paths:
+      - 'agencia3d/requests/generar-prueba.txt'
 permissions:
   contents: read
 concurrency:
-  group: agencia3d-trellis2-free-once
-  cancel-in-progress: false
+  group: agencia3d-zerogpu-free-once
+  cancel-in-progress: true
 jobs:
-  test-free:
-    if: github.repository == 'adedramaa/freellmapi'
+  generate:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/experimento/agencia3d-blender'
     runs-on: ubuntu-24.04
     timeout-minutes: 9
+    environment: agencia3d-free
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
     steps:
-      - name: Checkout experimental sin credenciales
+      - name: Checkout sin credenciales
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Instalar cliente y creador de imagen de prueba
-        run: python3 -m pip install --disable-pip-version-check --quiet --no-input --user 'gradio_client>=1.10,<3' 'Pillow>=10,<13'
-      - name: Crear dibujo sintético con fondo transparente (NO imagen privada)
+      - name: Asegurar cuenta HF gratuita antes de pedir GPU
+        id: guard
         shell: bash
+        run: |
+          if [ -z "${HF_TOKEN:-}" ]; then
+            echo "::notice::HF_TOKEN no configurado en entorno agencia3d-free. No se ejecuta TRELLIS2."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::add-mask::${HF_TOKEN}"
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Instalar cliente gratuito
+        if: steps.guard.outputs.ready == 'true'
+        run: python3 -m pip install --quiet --disable-pip-version-check --no-input --user 'gradio_client>=1.10,<3' 'Pillow>=10,<13'
+      - name: Verificar identidad libre, sin GPU
+        if: steps.guard.outputs.ready == 'true'
+        run: python3 trellis2_bridge/trellis2_client.py --mode auth-check
+      - name: Generar imagen ficticia (NO el material privado del usuario)
+        if: steps.guard.outputs.ready == 'true'
         run: |
           python3 - <<'PY'
           from PIL import Image, ImageDraw
@@ -39,26 +59,26 @@ jobs:
           d.ellipse((176,154,220,186),fill='#493026')
           im.save('trellis2_synthetic_input.png')
           PY
-      - name: Intentar UNA generación y UNA exportación con cuota anónima gratis
-        shell: bash
+      - name: Una sola generación TRELLIS2 con cuenta free
+        if: steps.guard.outputs.ready == 'true'
         run: |
           python3 trellis2_bridge/trellis2_client.py --mode generate --image trellis2_synthetic_input.png --out "$RUNNER_TEMP/trellis-resultado" --accept-free-quota
-      - name: Verificar GLB real
-        shell: bash
+      - name: Comprobar estructura GLB
+        if: steps.guard.outputs.ready == 'true'
         run: |
           python3 - <<'PY'
-          from pathlib import Path
           import os
+          from pathlib import Path
           p=Path(os.environ['RUNNER_TEMP'])/'trellis-resultado'/'trellis2_resultado.glb'
-          with p.open('rb') as f: assert f.read(4)==b'glTF'
-          assert p.stat().st_size>100
-          print('TRELLIS2_GENERACION_REAL_OK',p.stat().st_size)
+          assert p.exists() and p.stat().st_size>100
+          assert p.read_bytes()[:4]==b'glTF'
+          print('RESULTADO_TRELLIS2_OK: GLB auténtico generado')
           PY
-      - name: Archivar solo el resultado sintético
-        if: success()
+      - name: Guardar únicamente modelo sintético durante un día
+        if: steps.guard.outputs.ready == 'true' && success()
         uses: actions/upload-artifact@v4
         with:
-          name: agencia3d-trellis2-generacion-sintetica
+          name: agencia3d-trellis2-prueba-autenticada
           path: ${{ runner.temp }}/trellis-resultado/
           retention-days: 1
           if-no-files-found: error
