@@ -63,6 +63,12 @@ def verify_account(token):
     name=who.get('name')
     if not name:
         raise RuntimeError('AUTH_INVALID: Hugging Face no devolvio usuario')
+    if name!='adedrama':
+        raise RuntimeError('AUTH_MISMATCH: cuenta de Hugging Face diferente')
+    # Cuentas PRO o de pago pueden consumir creditos al exceder cuota;
+    # se bloquean por la regla absoluta de coste cero.
+    if who.get('isPro') or who.get('is_pro'):
+        raise RuntimeError('PAID_ACCOUNT_BLOCKED: requerimos cuenta free')
     return {'status':'AUTH_OK','account':name,'gpu_calls':0}
 
 def generate(src:Path, out_dir:Path, token:str):
@@ -97,8 +103,8 @@ def main():
     p.add_argument('--out',type=Path,default=Path('output'))
     p.add_argument('--accept-free-quota',action='store_true')
     a=p.parse_args()
-    print(json.dumps(probe(),ensure_ascii=False))
     if a.mode=='probe':
+        print(json.dumps(probe(),ensure_ascii=False))
         return
     try:
         token=require_token()
@@ -109,6 +115,8 @@ def main():
         raise SystemExit(2)
     if a.mode=='auth-check':
         return
+    # Verificar endpoints antes de consumir tiempo de GPU.
+    print(json.dumps(probe(),ensure_ascii=False))
     if not a.accept_free_quota or a.image is None:
         raise SystemExit('Para generar se necesita --image y --accept-free-quota')
     try:
