@@ -1,0 +1,49 @@
+# Auditoria gratuita de credenciales: NO genera modelos ni solicita GPU.
+# Entorno aislado. Permisos solo lectura. Nunca imprimir el token.
+name: Agencia3D - Verificar autenticacion Hugging Face (sin GPU)
+on:
+  push:
+    branches:
+      - experimento/agencia3d-blender
+    paths:
+      - '.github/workflows/agencia3d-hf-auth-check.yml'
+      - 'agencia3d/requests/verificar-hf.txt'
+permissions:
+  contents: read
+concurrency:
+  group: agencia3d-authcheck
+  cancel-in-progress: true
+jobs:
+  authcheck:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/experimento/agencia3d-blender'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: agencia3d-free
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - name: Checkout sin permisos de escritura
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Comprobar que el secreto se configuró
+        id: guard
+        shell: bash
+        run: |
+          if [ -z "${HF_TOKEN:-}" ]; then
+            echo "::notice::Falta HF_TOKEN en environment agencia3d-free. Cero llamadas GPU."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::add-mask::${HF_TOKEN}"
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verificar cuenta free con la API (sin generar)
+        if: steps.guard.outputs.ready == 'true'
+        shell: bash
+        run: |
+          python3 -m pip install --user --quiet --disable-pip-version-check --no-input 'huggingface_hub>=0.24,<2'
+          python3 trellis2_bridge/trellis2_client.py --mode auth-check
+      - name: Resultado
+        shell: bash
+        run: |
+          echo "Autenticación revisada. Ninguna llamada de generación ni extracción fue realizada."
