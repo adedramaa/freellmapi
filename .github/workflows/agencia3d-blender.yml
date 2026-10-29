@@ -1,0 +1,57 @@
+name: Agencia3D - Blender REAL (prueba segura)
+on:
+  push:
+    branches:
+      - 'experimento/agencia3d-blender'
+    paths:
+      - '.github/workflows/agencia3d-blender.yml'
+      - 'agencia3d/**'
+permissions:
+  contents: read
+concurrency:
+  group: agencia3d-smoke-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  blender-real:
+    if: github.repository == 'adedramaa/freellmapi' && github.ref == 'refs/heads/experimento/agencia3d-blender'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Instalar Blender real (Ubuntu)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
+          blender --version | head -n 2
+      - name: Ejecutar Blender sin interfaz
+        run: |
+          set -euo pipefail
+          blender -b --factory-startup --python agencia3d/blender_pipeline.py -- --out "$RUNNER_TEMP/agencia3d"
+      - name: Validar archivos y firmas
+        env:
+          OUT: ${{ runner.temp }}/agencia3d
+        run: |
+          python3 - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          out=Path(os.environ['OUT'])
+          m=json.loads((out/'manifest.json').read_text())
+          assert m['mesh_count'] >= 3
+          for fn, sha in m['files_sha256'].items():
+              data=(out/fn).read_bytes()
+              assert len(data)>512, fn
+              assert hashlib.sha256(data).hexdigest()==sha, fn
+          assert (out/'modelo.glb').read_bytes()[:4]==b'glTF'
+          assert (out/'modelo.blend').read_bytes()[:7]==b'BLENDER'
+          print('VERIFICACION_OK: Blender nativo, GLB, BLEND, STL y 2 renders')
+          PY
+      - name: Publicar archivos para descargar 1 dia
+        uses: actions/upload-artifact@v4
+        with:
+          name: agencia3d-blender-real
+          path: ${{ runner.temp }}/agencia3d/
+          retention-days: 1
+          if-no-files-found: error
