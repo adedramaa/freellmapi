@@ -1,0 +1,63 @@
+# Prueba verdadera: importar GLB público en Blender, normalizar y reexportar.
+# No usa imágenes privadas, TRELLIS GPU ni credenciales pagadas.
+name: Agencia3D - Importar GLB en Blender REAL
+on:
+  push:
+    branches: ['experimento/agencia3d-blender']
+    paths: ['.github/workflows/agencia3d-blender-import.yml']
+permissions:
+  contents: read
+concurrency:
+  group: agencia3d-import-proof
+  cancel-in-progress: true
+jobs:
+  import-and-render:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Clonar rama aislada sin credenciales
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Instalar Blender autentico
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender libegl1 libgl1 libgl1-mesa-dri libglx-mesa0 xvfb python3-numpy python3-pil
+      - name: Obtener modelo GLB de muestra pública Khronos
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 -o "$RUNNER_TEMP/original.glb" https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Duck/glTF-Binary/Duck.glb
+          test "$(stat -c '%s' "$RUNNER_TEMP/original.glb")" -gt 1000
+      - name: Procesar realmente en Blender con 150 mm
+        run: |
+          xvfb-run -a blender -b --factory-startup --python agencia3d/blender_pipeline.py -- --input "$RUNNER_TEMP/original.glb" --height-mm 150 --out "$RUNNER_TEMP/agencia3d-import"
+      - name: Validar formatos, metadatos, 4 renders
+        run: |
+          python3 - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'agencia3d-import'
+          m=json.loads((p/'manifest.json').read_text())
+          assert m['source']=='archivo_importado', m
+          assert m['normalization']['height_mm']==150
+          assert m['mesh_count']>=1
+          assert len(m['files_sha256'])==7
+          for name,sha in m['files_sha256'].items():
+              blob=(p/name).read_bytes()
+              assert len(blob)>512,(name,len(blob))
+              assert hashlib.sha256(blob).hexdigest()==sha,name
+          assert (p/'modelo.glb').read_bytes()[:4]==b'glTF'
+          assert (p/'modelo.blend').read_bytes()[:7]==b'BLENDER'
+          for f in ('vista_frente.png','vista_tres_cuartos.png','vista_perfil.png','vista_espalda.png'):
+              assert (p/f).read_bytes()[:8]==bytes.fromhex('89504e470d0a1a0a')
+          print('IMPORTACION_3D_REAL_OK: GLB procesado por Blender, 150 mm, 4 renders, STL + BLEND + GLB')
+          PY
+      - name: Entregar proyecto para descargar 1 dia
+        uses: actions/upload-artifact@v4
+        with:
+          name: agencia3d-blender-import-prueba-real
+          path: ${{ runner.temp }}/agencia3d-import/
+          retention-days: 1
+          if-no-files-found: error
