@@ -12,12 +12,13 @@ import sys
 import struct
 from pathlib import Path
 import bpy
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 def args():
     p = argparse.ArgumentParser()
     p.add_argument('--out', default='output')
     p.add_argument('--input', default='')
+    p.add_argument('--height-mm',type=float,default=150.0)
     return p.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
 
 def reset():
@@ -75,7 +76,32 @@ def import_glb(path):
     if not any(o.type == 'MESH' for o in bpy.context.scene.objects):
         raise RuntimeError('El GLB no contiene mallas')
 
-def set_camera(location, target):
+def normalize_imported(height_mm):
+    """Reencuadrar la malla original importada a altura exacta en mm."""
+    if not (10 <= height_mm <= 600):
+        raise ValueError('Altura permitida: 10-600 mm')
+    bpy.context.view_layer.update()
+    meshes = [o for o in bpy.context.scene.objects if o.type=='MESH']
+    if not meshes:
+        raise RuntimeError('Sin mallas')
+    vertices = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
+    mins = Vector(tuple(min(v[i] for v in vertices) for i in range(3)))
+    maxs = Vector(tuple(max(v[i] for v in vertices) for i in range(3)))
+    dims = maxs - mins
+    original_height = dims.z if dims.z > 1e-6 else max(dims)
+    if original_height < 1e-6:
+        raise ValueError('Geometría sin dimensiones')
+    factor = height_mm/original_height
+    trans = Matrix.Translation(Vector((-(mins.x+maxs.x)*.5*factor,
+                                      -(mins.y+maxs.y)*.5*factor,
+                                      -mins.z*factor))) @ Matrix.Scale(factor,4)
+    roots=[o for o in bpy.context.scene.objects if o.parent is None]
+    for obj in roots:
+        obj.matrix_world = trans @ obj.matrix_world
+    bpy.context.view_layer.update()
+    return {'height_mm':height_mm,'original_height_units':original_height,'scale_factor':factor}
+
+def set_camera(location, target, scale=113):
     cam = bpy.data.objects.get('CAMARA_RENDER')
     if cam is None:
         camdata = bpy.data.cameras.new('CAMARA_A3D')
@@ -85,7 +111,7 @@ def set_camera(location, target):
     direction = Vector(target) - cam.location
     cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
     cam.data.type = 'ORTHO'
-    cam.data.ortho_scale = 113
+    cam.data.ortho_scale = scale
     bpy.context.scene.camera = cam
 
 def render(path):
@@ -109,18 +135,41 @@ def main():
     out = Path(a.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     reset()
+    # STL no define unidades; el STL generado usa mm y Blender permite consultar mm.
+    bpy.context.scene.unit_settings.system = 'METRIC'
+    bpy.context.scene.unit_settings.scale_length = 0.001
+    bpy.context.scene.unit_settings.length_unit = 'MILLIMETERS'
     if a.input:
         import_glb(a.input)
+        measures = normalize_imported(a.height_mm)
         source = 'archivo_importado'
     else:
         make_fixture()
+        measures = {'height_mm':None, 'source':'geometria_calibracion'}
         source = 'calibracion_geometrica'
     meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
     assert meshes, 'No se creó geometría'
-    set_camera((0, -140, 116), (0, 0, 6))
-    render(out / 'vista_frente.png')
-    set_camera((130, -140, 115), (0, 0, 6))
-    render(out / 'vista_tres_cuartos.png')
+    if a.input:
+        center=(0,0,a.height_mm * 0.5)
+        side=a.height_mm * 2.35
+        scale=a.height_mm * 1.85
+        poses={
+            'vista_frente.png':((0,-side,a.height_mm * 1.1),center),
+            'vista_tres_cuartos.png':((side*.72,-side*.8,a.height_mm * 1.12),center),
+            'vista_perfil.png':((side,0,a.height_mm *.9),center),
+            'vista_espalda.png':((0,side,a.height_mm * 1.1),center)
+        }
+    else:
+        poses={
+            'vista_frente.png':((0,-140,116),(0,0,6)),
+            'vista_tres_cuartos.png':((130,-140,115),(0,0,6)),
+            'vista_perfil.png':((140,0,110),(0,0,6)),
+            'vista_espalda.png':((0,140,116),(0,0,6))
+        }
+        scale=113
+    for filename,(position,target) in poses.items():
+        set_camera(position,target,scale)
+        render(out / filename)
     bpy.ops.wm.save_as_mainfile(filepath=str(out / 'modelo.blend'))
     bpy.ops.object.select_all(action='DESELECT')
     for obj in meshes:
@@ -154,8 +203,9 @@ def main():
         'blender_version': bpy.app.version_string,
         'mesh_count': len(meshes),
         'objects': [o.name for o in meshes],
-        'units': 'fixture coordinates are millimeters; GLB/STL follow Blender scene units',
-        'files_sha256': {f: filehash(out / f) for f in ['modelo.blend', 'modelo.glb', 'modelo.stl', 'vista_frente.png', 'vista_tres_cuartos.png']},
+        'normalization': measures,
+        'units': 'STL vertices in mm; Blender scene 1 unit = 1 mm. GLB glTF convention is meters.',
+        'files_sha256': {f: filehash(out / f) for f in ['modelo.blend', 'modelo.glb', 'modelo.stl', 'vista_frente.png', 'vista_tres_cuartos.png', 'vista_perfil.png', 'vista_espalda.png']},
         'note': 'Prueba de Blender real, NO es reconstruccion del perro ni TRELLIS.2.'
     }
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
