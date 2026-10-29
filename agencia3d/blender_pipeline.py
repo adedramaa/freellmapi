@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 import sys
+import struct
 from pathlib import Path
 import bpy
 from mathutils import Vector
@@ -126,10 +127,28 @@ def main():
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.export_scene.gltf(filepath=str(out / 'modelo.glb'), export_format='GLB', use_selection=True)
-    if hasattr(bpy.ops.wm, 'stl_export'):
-        bpy.ops.wm.stl_export(filepath=str(out / 'modelo.stl'), export_selected_objects=True)
-    else:
-        bpy.ops.export_mesh.stl(filepath=str(out / 'modelo.stl'), use_selection=True)
+    # STL binario a partir de la geometria real evaluada por Blender, sin addons.
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    triangles = []
+    for original in meshes:
+        obj = original.evaluated_get(depsgraph)
+        mesh = obj.to_mesh()
+        try:
+            mesh.calc_loop_triangles()
+            for tri in mesh.loop_triangles:
+                v = [obj.matrix_world @ mesh.vertices[i].co for i in tri.vertices]
+                n = (v[1] - v[0]).cross(v[2] - v[0]).normalized()
+                triangles.append((n, v))
+        finally:
+            obj.to_mesh_clear()
+    with open(out / 'modelo.stl', 'wb') as stl:
+        stl.write(b'Agencia3D STL desde Blender'.ljust(80, b' '))
+        stl.write(struct.pack('<I', len(triangles)))
+        for normal, vertices in triangles:
+            data = [*normal]
+            for v in vertices:
+                data.extend(v)
+            stl.write(struct.pack('<12fH', *data, 0))
     manifest = {
         'source': source,
         'blender_version': bpy.app.version_string,
