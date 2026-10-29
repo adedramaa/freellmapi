@@ -16,6 +16,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     steps:
+      - name: Obtener la rama experimental (sin credenciales)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validar cliente TRELLIS2 real (modo probe, GPU 0)
+        run: python3 trellis2_bridge/trellis2_client.py --mode probe
       - name: Consultar endpoints publicos SIN ejecutar GPU
         shell: bash
         run: |
