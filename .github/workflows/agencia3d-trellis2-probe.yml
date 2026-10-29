@@ -47,6 +47,7 @@ jobs:
                           record['component_types']=[{'id':c.get('id'),'type':c.get('type'),'label':(c.get('props') or {}).get('label')} for c in data.get('components',[]) if c.get('type') in ('image','state','file','model3d')]
                       else:
                           record['named_endpoints']=list((data.get('named_endpoints') or {}).keys())
+                          record['api_signatures']={k:{'parameters':[{'label':p.get('label'),'parameter_name':p.get('parameter_name'),'component':p.get('component'),'parameter_has_default':'parameter_default' in p} for p in v.get('parameters',[])], 'returns':[x.get('label') for x in v.get('returns',[])]} for k,v in (data.get('named_endpoints') or {}).items() if k in ('/image_to_3d','/extract_glb','/preprocess_image')}
                           record['unnamed_endpoints']=len(data.get('unnamed_endpoints') or {})
                   record['ok']=True
               except HTTPError as e:
