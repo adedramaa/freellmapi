@@ -24,12 +24,12 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender libegl1 libgl1 libgl1-mesa-dri libglx-mesa0 xvfb
           blender --version | head -n 2
       - name: Ejecutar Blender sin interfaz
         run: |
           set -euo pipefail
-          blender -b --factory-startup --python agencia3d/blender_pipeline.py -- --out "$RUNNER_TEMP/agencia3d"
+          xvfb-run -a blender -b --factory-startup --python agencia3d/blender_pipeline.py -- --out "$RUNNER_TEMP/agencia3d"
       - name: Validar archivos y firmas
         env:
           OUT: ${{ runner.temp }}/agencia3d
