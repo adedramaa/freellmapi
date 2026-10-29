@@ -4,7 +4,9 @@ name: Agencia3D - Importar GLB en Blender REAL
 on:
   push:
     branches: ['experimento/agencia3d-blender']
-    paths: ['.github/workflows/agencia3d-blender-import.yml']
+    paths:
+      - '.github/workflows/agencia3d-blender-import.yml'
+      - 'agencia3d/blender_pipeline.py'
 permissions:
   contents: read
 concurrency:
