@@ -25,7 +25,7 @@ def check() -> int:
         ENDPOINT, headers={"Authorization": "Bearer " + key, "Accept": "application/json"}
     )
     try:
-        with urllib.request.urlopen(request, timeout=20) as response:
+        with urllib.request.urlopen(request, timeout=90) as response:
             if response.status != 200:
                 print("Claude bridge preflight: provider status unavailable.")
                 return 1
