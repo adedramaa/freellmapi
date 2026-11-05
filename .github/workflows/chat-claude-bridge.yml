@@ -107,6 +107,33 @@ jobs:
             --output-format stream-json --verbose \
             > "$RUNNER_TEMP/claude-chat-stream.jsonl" \
             2> "$RUNNER_TEMP/claude-chat-error.log"; then
+            # Expose only safe diagnostic metadata; never print model output, prompts,
+            # provider stderr, HTTP bodies, auth headers, or credential values.
+            python3 -c '
+            import collections, json, re, sys
+            from pathlib import Path
+            events = []
+            for line in Path(sys.argv[1]).read_text(errors="replace").splitlines():
+                try:
+                    obj = json.loads(line)
+                    if isinstance(obj, dict):
+                        events.append(obj)
+                except (ValueError, TypeError):
+                    pass
+            summary = collections.Counter(str(obj.get("type", ""))[:35] for obj in events)
+            results = [{"subtype": str(obj.get("subtype", ""))[:40],
+                        "is_error": bool(obj.get("is_error")),
+                        "num_turns": obj.get("num_turns") if isinstance(obj.get("num_turns"), int) else None}
+                       for obj in events if obj.get("type") == "result"]
+            stderr = Path(sys.argv[2]).read_text(errors="replace").lower()
+            signals = ["429", "401", "402", "403", "500", "502", "503", "rate limit",
+                       "timeout", "context", "overloaded", "connection", "invalid request",
+                       "model not found", "authentication"]
+            print("Claude Code SAFE event counts:", dict(summary))
+            print("Claude Code SAFE result metadata:", results[:3])
+            print("Claude Code SAFE error categories:", [x for x in signals if x in stderr])
+            print("Claude Code SAFE stderr length:", len(stderr))
+            ' "$RUNNER_TEMP/claude-chat-stream.jsonl" "$RUNNER_TEMP/claude-chat-error.log"
             echo "Claude Code could not complete the constrained request; no changes published."
             exit 1
           fi
