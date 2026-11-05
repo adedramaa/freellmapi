@@ -63,11 +63,14 @@ def check() -> int:
         else:
             print("Claude bridge preflight: Groq in cooldown.")
         return 1
-    if state != "healthy":
-        print("Claude bridge preflight: Groq not healthy (state="
-              + str(state if state in {"unknown", "invalid"} else "unavailable") + ").")
+    if state == "invalid" or state not in {"healthy", "unknown"}:
+        print("Claude bridge preflight: Groq unavailable (state="
+              + str(state if state == "invalid" else "unavailable") + ").")
         return 1
-    print("Claude bridge preflight: Groq healthy; proceeding with constrained Claude Code.")
+    if state == "unknown":
+        print("Claude bridge preflight: Groq key configured, health unverified; attempting constrained Claude Code.")
+    else:
+        print("Claude bridge preflight: Groq healthy; proceeding with constrained Claude Code.")
     return 0
 
 
