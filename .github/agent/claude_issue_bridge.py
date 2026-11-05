@@ -45,7 +45,7 @@ def confirm_added_request_from_git(root: Path, event: dict) -> str:
         raise ValueError("Task commit parent does not match the authorized push.")
     diff = subprocess.run(["git", "diff-tree", "--no-commit-id", "--name-status", "-r", sha],
                           cwd=root, capture_output=True, text=True, check=True).stdout.splitlines()
-    if len(diff) != 1 or not diff[0].startswith("A\\t"):
+    if len(diff) != 1 or not diff[0].startswith("A\t"):
         raise ValueError("Task commit must add exactly one file and change nothing else.")
     return diff[0][2:]
 
