@@ -64,6 +64,21 @@ jobs:
         run: python3 .github/agent/claude_issue_bridge.py prepare
       - name: Install real Claude Code official CLI
         run: npm install --global @anthropic-ai/claude-code@2.1.296
+      - name: Install official Remotion plugin for Claude Code
+        uses: ./.github/actions/setup-remotion
+
+      - name: Install approved Anthropic document and design plugins
+        shell: bash
+        env:
+          DISABLE_TELEMETRY: '1'
+        run: |
+          set -euo pipefail
+          claude plugin marketplace add anthropics/skills
+          claude plugin install document-skills@anthropic-agent-skills --scope project
+          claude plugin install example-skills@anthropic-agent-skills --scope project
+          claude plugin list | tee "$RUNNER_TEMP/claude-plugins-installed.txt"
+          grep -F 'document-skills@anthropic-agent-skills' "$RUNNER_TEMP/claude-plugins-installed.txt"
+          grep -F 'example-skills@anthropic-agent-skills' "$RUNNER_TEMP/claude-plugins-installed.txt"
       - name: Run Claude Code with only Read and Edit
         env:
           ANTHROPIC_BASE_URL: https://adedrama-freellmapi.onrender.com
@@ -92,6 +107,10 @@ jobs:
             --output-format stream-json --verbose \
             > "$RUNNER_TEMP/claude-chat-stream.jsonl" \
             2> "$RUNNER_TEMP/claude-chat-error.log"; then
+            # Expose only safe diagnostic metadata; never print model output, prompts,
+            # provider stderr, HTTP bodies, auth headers, or credential values.
+            python3 .github/agent/claude_cli_diagnostics.py \
+              "$RUNNER_TEMP/claude-chat-stream.jsonl" "$RUNNER_TEMP/claude-chat-error.log"
             echo "Claude Code could not complete the constrained request; no changes published."
             exit 1
           fi
