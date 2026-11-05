@@ -62,6 +62,10 @@ jobs:
       - name: Validate authorized task commit and exact file scope
         id: selection
         run: python3 .github/agent/claude_issue_bridge.py prepare
+      - name: Validate model provider availability (without exposing keys)
+        env:
+          FREELLMAPI_API_KEY: ${{ secrets.FREELLMAPI_API_KEY }}
+        run: python3 .github/agent/claude_provider_preflight.py
       - name: Install real Claude Code official CLI
         run: npm install --global @anthropic-ai/claude-code@2.1.296
       - name: Install official Remotion plugin for Claude Code
