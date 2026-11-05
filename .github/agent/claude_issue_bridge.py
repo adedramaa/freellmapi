@@ -24,6 +24,32 @@ MAX_CHANGED_LINES = 35
 MAX_RESULT_BYTES = 6_000
 
 
+def confirm_added_request_from_git(root: Path, event: dict) -> str:
+    """Verify exact one-file addition against Git itself if webhook file lists are absent.
+
+    The push actor and commit count are checked independently by get_request.
+    Fetching the signed event SHA avoids trusting incomplete webhook file arrays.
+    """
+    commit = event.get("head_commit") or {}
+    sha = commit.get("id")
+    before = event.get("before")
+    if (not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha)
+            or os.environ.get("GITHUB_SHA") != sha
+            or not isinstance(before, str) or not re.fullmatch(r"[0-9a-f]{40}", before)):
+        raise ValueError("Missing or inconsistent GitHub push SHA.")
+    subprocess.run(["git", "fetch", "--no-tags", "--depth=2", "origin", sha],
+                   cwd=root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    ancestry = subprocess.run(["git", "rev-list", "--parents", "-n", "1", sha],
+                              cwd=root, capture_output=True, text=True, check=True).stdout.strip().split()
+    if ancestry != [sha, before]:
+        raise ValueError("Task commit parent does not match the authorized push.")
+    diff = subprocess.run(["git", "diff-tree", "--no-commit-id", "--name-status", "-r", sha],
+                          cwd=root, capture_output=True, text=True, check=True).stdout.splitlines()
+    if len(diff) != 1 or not diff[0].startswith("A\\t"):
+        raise ValueError("Task commit must add exactly one file and change nothing else.")
+    return diff[0][2:]
+
+
 def get_request(root: Path, event: dict) -> tuple[str, str, Path]:
     """Only an owner's single new dispatch-file push can invoke Claude Code."""
     if (
@@ -37,9 +63,12 @@ def get_request(root: Path, event: dict) -> tuple[str, str, Path]:
     if not isinstance(commit, dict) or not isinstance(commits, list) or len(commits) != 1:
         raise ValueError("Expected exactly one new dispatch commit.")
     added, modified, removed = commit.get("added"), commit.get("modified"), commit.get("removed")
-    if not isinstance(added, list) or len(added) != 1 or modified or removed:
-        raise ValueError("One new request file, no other changes, is required.")
-    request_path = added[0]
+    if isinstance(added, list) and len(added) == 1 and not modified and not removed:
+        request_path = added[0]
+    else:
+        # GitHub sometimes omits commit file lists in Actions push payloads.
+        # Do not relax the one-file scope: verify the commit and its parent via Git.
+        request_path = confirm_added_request_from_git(root, event)
     if not isinstance(request_path, str) or not re.fullmatch(
         r"\.claude-requests/task-[0-9]{8}-[a-z0-9-]{1,50}\.json", request_path
     ):
