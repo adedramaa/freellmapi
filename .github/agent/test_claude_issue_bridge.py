@@ -105,21 +105,21 @@ class BridgeTests(unittest.TestCase):
         ok = lambda value: subprocess.CompletedProcess([], 0, stdout=value)
         with patch.dict(os.environ, {"GITHUB_SHA": sha}):
             with patch("claude_issue_bridge.subprocess.run", side_effect=[
-                ok(""), ok(sha + " " + previous + "\\n"),
-                ok("A\\t.claude-requests/task-20261021-pilot.json\\n")
+                ok(""), ok(sha + " " + previous + "\n"),
+                ok("A\t.claude-requests/task-20261021-pilot.json\n")
             ]):
                 from claude_issue_bridge import confirm_added_request_from_git
                 self.assertEqual(confirm_added_request_from_git(self.root, self.event),
                                  ".claude-requests/task-20261021-pilot.json")
             with patch("claude_issue_bridge.subprocess.run", side_effect=[
-                ok(""), ok(sha + " " + previous + "\\n"),
-                ok("M\\tdocs/demo.md\\n")
+                ok(""), ok(sha + " " + previous + "\n"),
+                ok("M\tdocs/demo.md\n")
             ]):
                 with self.assertRaises(ValueError):
                     confirm_added_request_from_git(self.root, self.event)
             self.event["before"] = "c" * 40
             with patch("claude_issue_bridge.subprocess.run", side_effect=[
-                ok(""), ok(sha + " " + previous + "\\n")
+                ok(""), ok(sha + " " + previous + "\n")
             ]):
                 with self.assertRaises(ValueError):
                     confirm_added_request_from_git(self.root, self.event)
