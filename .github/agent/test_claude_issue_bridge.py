@@ -1,6 +1,9 @@
 """Tests for owner-only ChatGPT -> push dispatch -> Claude Code bridge."""
 import json
 import tempfile
+import os
+import subprocess
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 
@@ -84,6 +87,42 @@ class BridgeTests(unittest.TestCase):
             self.task({"file": "docs/demo.md", "task": task})
             with self.subTest(task=task[:10]), self.assertRaises(ValueError):
                 get_request(self.root, self.event)
+
+    def test_missing_webhook_file_list_uses_verified_commit(self):
+        self.event["head_commit"]["added"] = []
+        with patch("claude_issue_bridge.confirm_added_request_from_git",
+                   return_value=".claude-requests/task-20261021-pilot.json") as verified:
+            rel, task, path = get_request(self.root, self.event)
+            verified.assert_called_once_with(self.root, self.event)
+            self.assertEqual(rel, "docs/demo.md")
+            self.assertEqual(path, self.target)
+
+    def test_commit_fallback_requires_matching_parent_and_single_added_path(self):
+        sha = "a" * 40
+        previous = "b" * 40
+        self.event["head_commit"]["id"] = sha
+        self.event["before"] = previous
+        ok = lambda value: subprocess.CompletedProcess([], 0, stdout=value)
+        with patch.dict(os.environ, {"GITHUB_SHA": sha}):
+            with patch("claude_issue_bridge.subprocess.run", side_effect=[
+                ok(""), ok(sha + " " + previous + "\\n"),
+                ok("A\\t.claude-requests/task-20261021-pilot.json\\n")
+            ]):
+                from claude_issue_bridge import confirm_added_request_from_git
+                self.assertEqual(confirm_added_request_from_git(self.root, self.event),
+                                 ".claude-requests/task-20261021-pilot.json")
+            with patch("claude_issue_bridge.subprocess.run", side_effect=[
+                ok(""), ok(sha + " " + previous + "\\n"),
+                ok("M\\tdocs/demo.md\\n")
+            ]):
+                with self.assertRaises(ValueError):
+                    confirm_added_request_from_git(self.root, self.event)
+            self.event["before"] = "c" * 40
+            with patch("claude_issue_bridge.subprocess.run", side_effect=[
+                ok(""), ok(sha + " " + previous + "\\n")
+            ]):
+                with self.assertRaises(ValueError):
+                    confirm_added_request_from_git(self.root, self.event)
 
     def test_diff_limited_to_small_change(self):
         original = self.target.read_text()
