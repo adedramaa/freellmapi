@@ -1,7 +1,7 @@
 name: Argentina — vectorización nativa con DesignCraft (sin PNG incrustado)
 on:
   push:
-    branches: [designcraft-argentina-rebuild-20261106]
+    branches: [designcraft-argentina-premium-20261106]
     paths:
       - '.github/workflows/argentina-designcraft-native.yml'
       - 'designcraft-final/**'
