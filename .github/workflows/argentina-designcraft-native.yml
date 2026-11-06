@@ -1,0 +1,50 @@
+name: Argentina — vectorización nativa con DesignCraft (sin PNG incrustado)
+on:
+  push:
+    branches: [designcraft-argentina-rebuild-20261106]
+    paths:
+      - '.github/workflows/argentina-designcraft-native.yml'
+      - 'designcraft-final/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-vector:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 19
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official DesignCraft 0.17.2 with verified checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=0.17.2
+          FILE="designcraft-${VERSION}-linux-x86_64.tar.gz"
+          URL="https://github.com/storytold/designcraft/releases/download/v${VERSION}"
+          mkdir -p "$RUNNER_TEMP/designcraft" "$RUNNER_TEMP/bin"
+          cd "$RUNNER_TEMP"
+          curl -fLsS --retry 3 "$URL/$FILE" -o "$FILE"
+          curl -fLsS --retry 3 "$URL/SHA256SUMS.txt" -o SHA256SUMS.txt
+          awk -v target="$FILE" '$2 == target {print; found=1} END {if (!found) exit 1}' SHA256SUMS.txt | sha256sum -c -
+          tar -xzf "$FILE" -C "$RUNNER_TEMP/designcraft"
+          CLI="$(find "$RUNNER_TEMP/designcraft" -type f -name designcraft-cli -print -quit)"
+          test -n "$CLI"
+          chmod +x "$CLI"
+          ln -s "$CLI" "$RUNNER_TEMP/bin/designcraft-cli"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/designcraft-cli" --version
+      - name: Create genuine editable native artwork
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 designcraft-final/build_native.py designcraft-final/output
+          file designcraft-final/output/Argentina_REHECHO_DesignCraft.*
+      - name: Collect native document and exported preview
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Argentina-DesignCraft-nativo-${{ github.run_id }}
+          path: designcraft-final/output/
+          retention-days: 7
+          if-no-files-found: warn
