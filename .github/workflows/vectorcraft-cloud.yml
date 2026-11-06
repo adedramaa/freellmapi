@@ -1,0 +1,60 @@
+name: VectorCraft — MCP oficial + prueba de dibujo vectorial
+
+on:
+  push:
+    branches: [vectorcraft-requests]
+    paths:
+      - '.github/workflows/vectorcraft-cloud.yml'
+      - 'vectorcraft-automation/**'
+      - '.vectorcraft-requests/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vectorcraft-mcp:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated VectorCraft branch
+        uses: actions/checkout@v4
+
+      - name: Install official VectorCraft v0.21.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=0.21.1
+          FILE="vectorcraft-${VERSION}-linux-x86_64.deb"
+          URL="https://github.com/storytold/vectorcraft/releases/download/v${VERSION}"
+          mkdir -p "$RUNNER_TEMP/vectorcraft-install"
+          cd "$RUNNER_TEMP/vectorcraft-install"
+          curl -fLsS --retry 3 "$URL/$FILE" -o "$FILE"
+          curl -fLsS --retry 3 "$URL/SHA256SUMS.txt" -o SHA256SUMS.txt
+          grep -F "  $FILE" SHA256SUMS.txt | sha256sum -c -
+          sudo apt-get update -qq
+          sudo apt-get install -y "./$FILE"
+          command -v vectorcraft-cli
+          vectorcraft-cli --help | head -40
+
+      - name: Verify real MCP and render editable vectors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          timeout 140 python3 vectorcraft-automation/mcp_smoke.py .vectorcraft-requests/request.json artifacts
+          test -s artifacts/arte.vectorcraft
+          test -s artifacts/arte.svg
+          test -s artifacts/arte.png
+          test -s artifacts/mcp-report.json
+          file artifacts/*
+
+      - name: Upload vector files and MCP proof
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vectorcraft-mcp-${{ github.run_id }}
+          path: artifacts/
+          retention-days: 3
+          if-no-files-found: warn
