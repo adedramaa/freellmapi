@@ -30,7 +30,7 @@ for label in labels:
     for entry in [x for x in shapes if x["layer"]==label]:
         ids=[]
         for p in entry["parts"]:
-            if len(p)>700:  # no path exceeds the engine's safe point budget
+            if len(p)>1400:  # no path exceeds the engine's safe point budget
                 raise RuntimeError("Overlong contour")
             i=push("path.create",{"anchors":[{"p":xy} for xy in p],"closed":True})
             ids.append(f"${i}.id")
