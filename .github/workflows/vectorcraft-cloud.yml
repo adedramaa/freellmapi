@@ -32,7 +32,7 @@ jobs:
           cd "$RUNNER_TEMP/vectorcraft-install"
           curl -fLsS --retry 3 "$URL/$FILE" -o "$FILE"
           curl -fLsS --retry 3 "$URL/SHA256SUMS.txt" -o SHA256SUMS.txt
-          grep -F "  $FILE" SHA256SUMS.txt | sha256sum -c -
+          awk -v target="$FILE" '$2 == target {print; found=1} END {if (!found) exit 1}' SHA256SUMS.txt | sha256sum -c -
           sudo apt-get update -qq
           sudo apt-get install -y "./$FILE"
           command -v vectorcraft-cli
