@@ -1,0 +1,45 @@
+{
+  "name": "primera-prueba-vectorcraft",
+  "shapes": [
+    {
+      "shape": "rectangle",
+      "x": 18,
+      "y": 36,
+      "width": 576,
+      "height": 720,
+      "fill": "#0EA5E9",
+      "stroke": "#121212",
+      "strokeWidth": 8
+    },
+    {
+      "shape": "rectangle",
+      "x": 42,
+      "y": 60,
+      "width": 528,
+      "height": 672,
+      "fill": "#FFFFFF",
+      "stroke": "#FFFFFF",
+      "strokeWidth": 0
+    },
+    {
+      "shape": "ellipse",
+      "x": 106,
+      "y": 145,
+      "width": 400,
+      "height": 400,
+      "fill": "#12B8EE",
+      "stroke": "#111111",
+      "strokeWidth": 5
+    },
+    {
+      "shape": "ellipse",
+      "x": 230,
+      "y": 270,
+      "width": 152,
+      "height": 152,
+      "fill": "#F7B700",
+      "stroke": "#FFFFFF",
+      "strokeWidth": 4
+    }
+  ]
+}
