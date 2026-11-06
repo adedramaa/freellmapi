@@ -1,0 +1,58 @@
+name: Argentina sticker — editable in real DesignCraft
+
+on:
+  push:
+    branches: [designcraft-argentina-editable]
+    paths:
+      - '.github/workflows/designcraft-argentina-editable.yml'
+      - 'designcraft-argentina/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-editable:
+    if: github.repository == 'adedramaa/freellmapi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    steps:
+      - name: Checkout dedicated vector branch
+        uses: actions/checkout@v4
+      - name: Install official DesignCraft CLI 0.17.2, verify package hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=0.17.2
+          FILE="designcraft-${VERSION}-linux-x86_64.tar.gz"
+          URL="https://github.com/storytold/designcraft/releases/download/v${VERSION}"
+          mkdir -p "$RUNNER_TEMP/designcraft-dist" "$RUNNER_TEMP/bin"
+          cd "$RUNNER_TEMP"
+          curl -fLsS --retry 3 "$URL/$FILE" -o "$FILE"
+          curl -fLsS --retry 3 "$URL/SHA256SUMS.txt" -o SHA256SUMS.txt
+          awk -v target="$FILE" '$2 == target {print; found=1} END {if (!found) exit 1}' SHA256SUMS.txt | sha256sum -c -
+          tar -xzf "$FILE" -C "$RUNNER_TEMP/designcraft-dist"
+          CLI="$(find "$RUNNER_TEMP/designcraft-dist" -type f -name designcraft-cli -print -quit)"
+          test -n "$CLI"
+          chmod +x "$CLI"
+          ln -s "$CLI" "$RUNNER_TEMP/bin/designcraft-cli"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/designcraft-cli" --version
+      - name: Draw source and export native DesignCraft document
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 designcraft-argentina/create_editable.py \
+            designcraft-argentina/ARGENTINA_EDITABLE.svg \
+            designcraft-argentina/output
+          file designcraft-argentina/output/Argentina_*
+      - name: Upload DesignCraft native + PDF + PNG + source SVG
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argentina-original-forma-designcraft-${{ github.run_id }}
+          path: |
+            designcraft-argentina/output/
+            designcraft-argentina/ARGENTINA_EDITABLE.svg
+          retention-days: 7
+          if-no-files-found: warn
